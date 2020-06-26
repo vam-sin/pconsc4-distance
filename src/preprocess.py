@@ -2,16 +2,17 @@
 import numpy as np 
 import h5py
 
-max_h = 494
-max_w = 494
+# param
+max_h = 496
+max_w = 496
 
-def pad(feature_map, w = 494, h = 494):
+# functions
+def pad(feature_map, w = 496, h = 496):
     result = np.zeros((w, h))
     result[:feature_map.shape[0],:feature_map.shape[1]] = feature_map
     
     return result
 
-# #Get the HDF5 group
 def get_datapoint(f, key):
     # X
     group = f['gdca']
@@ -72,7 +73,7 @@ def get_datapoint(f, key):
     # print(self_info.shape)
 
     X = np.stack((gdca, cross_h, nmi_corr, mi_corr, seq, part_entr, self_info), axis=2)
-    print(X.shape)
+    # print(X.shape)
 
     # y
     group = f['dist']
@@ -99,8 +100,8 @@ def get_datapoint(f, key):
     padded_y = np.stack((pad(y[:,:,0]), pad(y[:,:,1]), pad(y[:,:,2]), pad(y[:,:,3]), pad(y[:,:,4]), pad(y[:,:,5]), pad(y[:,:,6]), pad(y[:,:,7]), pad(y[:,:,8]), pad(y[:,:,9]), pad(y[:,:,10])), axis=2)
 
     padded_y = np.asarray(padded_y)
-    print(padded_y.shape)
-
+    # print(padded_y.shape)
+    print("Preprocessed data point")
     return X, padded_y
 
 
