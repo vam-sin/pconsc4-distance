@@ -13,7 +13,7 @@ def pad(feature_map, w = 496, h = 496):
     
     return result
 
-def get_datapoint(f, key):
+def get_datapoint(f, key, num_classes):
     # X
     group = f['gdca']
     gdca = group[key][()]
@@ -38,58 +38,63 @@ def get_datapoint(f, key):
 
     group = f['seq']
     seq = group[key][()]
-    # pad
-    num_cols_needed = orig_shape - len(seq[0])
-    for i in range(num_cols_needed):
-        placeholder = np.zeros((orig_shape,1))
-        # print(placeholder.shape)
-        seq = np.append(seq, placeholder, axis=1)
-
-    seq = pad(seq)
-    # print(seq.shape)
-
     group = f['part_entr']
     part_entr = group[key][()]
-    # pad
+    group = f['self_info']
+    self_info = group[key][()]
+
+    feat_68 = []
+    for i in range(len(part_entr)):
+        row = []
+        for j in seq[i]:
+            row.append(j)
+        for j in part_entr[i]:
+            row.append(j)
+        for j in self_info[i]:
+            row.append(j)
+        
+        feat_68.append(row)
+
+    feat_68 = np.asarray(feat_68)
+
     num_cols_needed = orig_shape - len(part_entr[0])
     for i in range(num_cols_needed):
         placeholder = np.zeros((orig_shape,1))
         # print(placeholder.shape)
-        part_entr = np.append(part_entr, placeholder, axis=1)
+        part_entr = np.append(feat_68, placeholder, axis=1)
 
-    part_entr = pad(part_entr)
-    # print(part_entr.shape)
-
-    group = f['self_info']
-    self_info = group[key][()]
-    # pad
-    num_cols_needed = orig_shape - len(self_info[0])
-    for i in range(num_cols_needed):
-        placeholder = np.zeros((orig_shape,1))
-        # print(placeholder.shape)
-        self_info = np.append(self_info, placeholder, axis=1)
-
-    self_info = pad(self_info)
+    feat_68 = pad(feat_68)
     # print(self_info.shape)
 
-    X = np.stack((gdca, cross_h, nmi_corr, mi_corr, seq, part_entr, self_info), axis=2)
+    X = np.stack((gdca, cross_h, nmi_corr, mi_corr, feat_68), axis=2)
+    del gdca, cross_h, nmi_corr, mi_corr, feat_68
     # print(X.shape)
 
     # y
     group = f['dist']
-    max_d = 100.0
-    num_classes = 11
-
     y = []
     dist = group[key][()]
+
+    if num_classes == 7:
+        bins = [2, 5, 7, 9, 11, 13, 15]
+    elif num_classes == 12:
+        bins = [2.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5]
+    elif num_classes == 26:
+        bins = [2, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25]
+
+    max_d = bins[len(bins)-1]
+
     for i in dist:
         y_r = []
         for j in i:
             dis_class = np.zeros(num_classes)
             if str(j) == 'inf' or j > max_d:
                 dis_class[num_classes-1] = 1.0
-            else:
-                dis_class[int(j/(num_classes-1))] = 1.0
+
+            for k in range(len(bins)-1):
+                if j >= bins[k] and j < bins[k+1]:
+                    dis_class[k] = 1.0
+
             y_r.append(dis_class)
 
         y_r = np.asarray(y_r)
@@ -97,11 +102,19 @@ def get_datapoint(f, key):
         y.append(y_r)
 
     y = np.asarray(y)
-    padded_y = np.stack((pad(y[:,:,0]), pad(y[:,:,1]), pad(y[:,:,2]), pad(y[:,:,3]), pad(y[:,:,4]), pad(y[:,:,5]), pad(y[:,:,6]), pad(y[:,:,7]), pad(y[:,:,8]), pad(y[:,:,9]), pad(y[:,:,10])), axis=2)
+
+    if num_classes == 7:
+        padded_y = np.stack(( pad(y[:,:,0]), pad(y[:,:,1]), pad(y[:,:,2]), pad(y[:,:,3]), pad(y[:,:,4]), pad(y[:,:,5]), pad(y[:,:,6]) ), axis=2)
+    elif num_classes == 12:
+        padded_y = np.stack(( pad(y[:,:,0]), pad(y[:,:,1]), pad(y[:,:,2]), pad(y[:,:,3]), pad(y[:,:,4]), pad(y[:,:,5]), pad(y[:,:,6]), pad(y[:,:,7]), pad(y[:,:,8]), pad(y[:,:,9]), pad(y[:,:,10]), pad(y[:,:,11]) ), axis=2)
+    elif num_classes == 26:
+        padded_y = np.stack(( pad(y[:,:,0]), pad(y[:,:,1]), pad(y[:,:,2]), pad(y[:,:,3]), pad(y[:,:,4]), pad(y[:,:,5]), pad(y[:,:,6]), pad(y[:,:,7]), pad(y[:,:,8]), pad(y[:,:,9]), pad(y[:,:,10]), pad(y[:,:,11]), pad(y[:,:,12]), pad(y[:,:,13]), pad(y[:,:,14]), pad(y[:,:,15]), pad(y[:,:,16]), pad(y[:,:,17]), pad(y[:,:,18]), pad(y[:,:,19]), pad(y[:,:,20]), pad(y[:,:,21]), pad(y[:,:,22]), pad(y[:,:,23]), pad(y[:,:,24]), pad(y[:,:,25]) ), axis=2)
+
 
     padded_y = np.asarray(padded_y)
+    del y
     # print(padded_y.shape)
-    print("Preprocessed data point")
+    # print("Preprocessed data point")
     return X, padded_y
 
 
@@ -110,7 +123,10 @@ if __name__ == '__main__':
     file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
     f = h5py.File(file_name, 'r')
     
-    datx, daty = get_datapoint(f, '4J32B.hhE0')
+    # num_classes = 7, 12, 26
+    datx, daty = get_datapoint(f, '4J32B.hhE0', 26)
+
+    print(daty.shape, datx.shape)
 
 '''
 Keys:

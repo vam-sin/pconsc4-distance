@@ -31,8 +31,8 @@ def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="s
 
 	return x
 
-def unet():
-	inp = Input(shape = (496, 496, 7))
+def unet(num_classes):
+	inp = Input(shape = (496, 496, 5))
 
 	#Downsampling
 	unet = add_2D_conv(inp, num_filters, 1)
@@ -96,7 +96,7 @@ def unet():
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
 
-	output = Conv2D(11, 7, activation ="softmax", data_format = "channels_last", 
+	output = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg)(unet)
 
 	model = Model(inputs = inp, outputs = output)
