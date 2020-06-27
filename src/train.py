@@ -45,146 +45,39 @@ if gpus:
 train_file_name = "../Datasets/PconsC4-data/data/training_pdbcull_170914_A_before160501.h5"
 f_train = h5py.File(train_file_name, 'r')
 
-def test_generator(X, y, batch_size = 1):
+test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
+f_test = h5py.File(test_file_name, 'r')
 
-    index_lst = list(range(len(X)))
-    random.shuffle(index_lst)
-    i = 0
+def generator_from_file(h5file, num_classes, batch_size=1):
+  key_lst = list(h5file['gdca'].keys())
+  random.shuffle(key_lst)
+  i = 0
 
-    while True:
+  while True:
+      # TODO: different batch sizes with padding to max(L)
+      # for i in range(batch_size):
+      # index = random.randint(1, len(features)-1)
+      if i == len(key_lst):
+          random.shuffle(key_lst)
+          i = 0
 
-        if i == len(index_lst):
-            random.shuffle(index_lst)
-            i = 0
+      key = key_lst[i]
 
-        index = index_lst[i]
+      X, y = get_datapoint(h5file, key, num_classes)
 
-        batch_features_dict = np.expand_dims(X[0], axis = 0)
+      batch_features_dict = np.expand_dims(X, axis = 0)
 
-        batch_labels_dict = np.expand_dims(y[0], axis = 0)
+      batch_labels_dict = np.expand_dims(y, axis = 0)
 
-        i += 1
+      i += 1
 
-        yield batch_features_dict, batch_labels_dict
+      yield batch_features_dict, batch_labels_dict
 
-def train_generator(num_classes, batch_size = 1):
-
-	key_lst = []
-
-	for key in f_train['gdca']:
-		key_lst.append(key)
-
-	index_lst = list(range(len(key_lst)))
-	random.shuffle(index_lst)
-
-	i = 0
-
-	while True:
-
-		if i == len(index_lst):
-			random.shuffle(index_lst)
-			i = 0
-
-		index = index_lst[i]
-
-		X, y = get_datapoint(f_train, key_lst[index], num_classes)
-
-		# print(X.shape, y.shape)
-
-		batch_features_dict = np.expand_dims(X, axis = 0)
-
-		batch_labels_dict = np.expand_dims(y, axis = 0)
-
-		i += 1
-
-		yield batch_features_dict, batch_labels_dict
-
-# file
-# train
-
-# train_file_name = "../Datasets/PconsC4-data/data/training_pdbcull_170914_A_before160501.h5"
-# f_train = h5py.File(train_file_name, 'r')
-
-# X_train = []
-# y_train = []
-
-# key_lst = []
-
-# for key in f_train['gdca']:
-# 	key_lst.append(key)
-
-# # print(len(f_train['gdca']))
-# for i in range(len(key_lst)):
-# 	X_p, y_p = get_datapoint(f_train, key_lst[i])
-# 	X_train.append(X_p)
-# 	y_train.append(y_p)
-# 	print(i+1, ", Train: 2891")
-	# if i+1 == 300:
-	# 	break
-
-# # pickle out
-# filename = 'X_train_1.pickle'
-# outfile = open(filename,'wb')
-# pickle.dump(X_train, outfile)
-# outfile.close()
-
-# filename = 'y_train_1.pickle'
-# outfile = open(filename,'wb')
-# pickle.dump(y_train, outfile)
-# outfile.close()
-
-# pickle in
-# infile = open('X_train.pickle','rb')
-# X_test = np.asarray(pickle.load(infile))
-# infile.close()
-
-# infile = open('y_train.pickle','rb')
-# y_test = np.asarray(pickle.load(infile))
-# infile.close()
-
-# test
-# test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
-# f_test = h5py.File(test_file_name, 'r')
-
-# X_test = []
-# y_test = []
-
-# i = 0
-# # print(len(f_test['gdca']))
-# for key in f_test['gdca']:
-# 	X_p, y_p = get_datapoint(f_test, key)
-# 	X_test.append(X_p)
-# 	y_test.append(y_p)
-# 	print(i+1, ", Test: 210")
-# 	i += 1
-
-# # pickle out
-# filename = 'X_test.pickle'
-# outfile = open(filename,'wb')
-# pickle.dump(X_test, outfile)
-# outfile.close()
-
-# filename = 'y_test.pickle'
-# outfile = open(filename,'wb')
-# pickle.dump(y_test, outfile)
-# outfile.close()
-
-# pickle in
-# infile = open('X_test.pickle','rb')
-# X_test = np.asarray(pickle.load(infile))
-# infile.close()
-
-# infile = open('y_test.pickle','rb')
-# y_test = np.asarray(pickle.load(infile))
-# infile.close()
-
-# print("Loaded Test")
-
-# test_gen = test_generator(X_test, y_test)
 num_classes = 7
-train_gen = train_generator(num_classes = num_classes)
+train_gen = generator_from_file(f_train, num_classes = num_classes)
+test_gen = generator_from_file(f_test, num_classes = num_classes)
 
-# # model
+# model
 model = unet(num_classes = num_classes)
 
 mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=True, monitor='accuracy', verbose=1)
@@ -193,7 +86,7 @@ callbacks_list = [reduce_lr, mcp_save]
 
 model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
 with tf.device('/cpu:0'):
-	model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 2891, verbose=1, callbacks = callbacks_list)
+    model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 320, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
 
