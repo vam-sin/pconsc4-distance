@@ -32,7 +32,7 @@ def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="s
 	return x
 
 def unet(num_classes):
-	inp = Input(shape = (496, 496, 5))
+	inp = Input(shape = (1, 1, 160))
 
 	#Downsampling
 	unet = add_2D_conv(inp, num_filters, 1)
@@ -41,57 +41,57 @@ def unet(num_classes):
 
 	link1 = unet
 
-	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
+	# unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*2, 3)
 	unet = add_2D_conv(unet, num_filters*2, 3)
 
 	link2 = unet
 
-	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
+	# unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*4, 3)
 	unet = add_2D_conv(unet, num_filters*4, 3)
 
 	link3 = unet
 
-	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
+	# unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*8, 3)
 	unet = add_2D_conv(unet, num_filters*8, 3)
 
 	link4 = unet
 
-	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
+	# unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*16, 3)
 	unet = add_2D_conv(unet, num_filters*16, 3)
 
 	#Upsampling
-	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
+	# unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters*8, 2)
 
-	unet = keras.layers.concatenate([unet, link4])
+	# unet = keras.layers.concatenate([unet, link4])
 
 	unet = add_2D_conv(unet, num_filters*8, 3)
 	unet = add_2D_conv(unet, num_filters*8, 3)
 
-	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
+	# unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters*4, 2)
 
-	unet = keras.layers.concatenate([unet, link3])
+	# unet = keras.layers.concatenate([unet, link3])
 
 	unet = add_2D_conv(unet, num_filters*4, 3)
 	unet = add_2D_conv(unet, num_filters*4, 3)
 
-	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
+	# unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters*2, 2)
 
-	unet = keras.layers.concatenate([unet, link2])
+	# unet = keras.layers.concatenate([unet, link2])
 
 	unet = add_2D_conv(unet, num_filters*2, 3)
 	unet = add_2D_conv(unet, num_filters*2, 3)
 
-	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
+	# unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters, 2)
 
-	unet = keras.layers.concatenate([unet, link1])
+	# unet = keras.layers.concatenate([unet, link1])
 
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
@@ -100,7 +100,7 @@ def unet(num_classes):
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg)(unet)
 
 	model = Model(inputs = inp, outputs = output)
-	# print(model.summary())
+	print(model.summary())
 
 	return model 
 

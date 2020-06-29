@@ -117,6 +117,74 @@ def get_datapoint(f, key, num_classes):
     # print("Preprocessed data point")
     return X, padded_y
 
+def get_datapoint_reg(f, key, num_classes):
+    # X
+    group = f['gdca']
+    gdca = group[key][()]
+    orig_shape = len(gdca)
+    gdca = pad(gdca)
+    # print(gdca.shape)
+
+    group = f['cross_h']
+    cross_h = group[key][()]
+    cross_h = pad(cross_h)
+    # print(cross_h.shape)
+
+    group = f['nmi_corr']
+    nmi_corr = group[key][()]
+    nmi_corr = pad(nmi_corr)
+    # print(nmi_corr.shape)
+
+    group = f['mi_corr']
+    mi_corr = group[key][()]
+    mi_corr = pad(mi_corr)
+    # print(mi_corr.shape)
+
+    group = f['seq']
+    seq = group[key][()]
+    group = f['part_entr']
+    part_entr = group[key][()]
+    group = f['self_info']
+    self_info = group[key][()]
+
+    feat_68 = []
+    for i in range(len(part_entr)):
+        row = []
+        for j in seq[i]:
+            row.append(j)
+        for j in part_entr[i]:
+            row.append(j)
+        for j in self_info[i]:
+            row.append(j)
+        
+        feat_68.append(row)
+
+    feat_68 = np.asarray(feat_68)
+
+    num_cols_needed = orig_shape - len(part_entr[0])
+    for i in range(num_cols_needed):
+        placeholder = np.zeros((orig_shape,1))
+        # print(placeholder.shape)
+        part_entr = np.append(feat_68, placeholder, axis=1)
+
+    feat_68 = pad(feat_68)
+    # print(self_info.shape)
+
+    X = np.stack((gdca, cross_h, nmi_corr, mi_corr, feat_68), axis=2)
+    del gdca, cross_h, nmi_corr, mi_corr, feat_68
+    # print(X.shape)
+
+    # y
+    group = f['dist']
+    y = []
+    dist = group[key][()]
+    y = pad(dist)
+    y = np.expand_dims(y, axis=2)
+
+    # print(padded_y.shape)
+    # print("Preprocessed data point")
+    return X, y
+
 
 if __name__ == '__main__':
 
@@ -124,7 +192,7 @@ if __name__ == '__main__':
     f = h5py.File(file_name, 'r')
     
     # num_classes = 7, 12, 26
-    datx, daty = get_datapoint(f, '4J32B.hhE0', 26)
+    datx, daty = get_datapoint_reg(f, '4J32B.hhE0', 26)
 
     print(daty.shape, datx.shape)
 
