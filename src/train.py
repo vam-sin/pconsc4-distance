@@ -9,7 +9,7 @@ loss: 6.7063e-04 - accuracy: 0.2352
 # libraries
 import numpy as np 
 import h5py
-from preprocess import get_datapoint
+from preprocess_pcons import get_datapoint
 from model import unet
 import pickle
 import random
@@ -65,13 +65,12 @@ def generator_from_file(h5file, num_classes, batch_size=1):
 
       X, y = get_datapoint(h5file, key, num_classes)
 
-      batch_features_dict = np.expand_dims(X, axis = 0)
-
-      batch_labels_dict = np.expand_dims(y, axis = 0)
+      batch_labels_dict = {}
+      batch_labels_dict["out_dist"] = y
 
       i += 1
 
-      yield batch_features_dict, batch_labels_dict
+      yield X, batch_labels_dict
 
 num_classes = 7
 train_gen = generator_from_file(f_train, num_classes = num_classes)
@@ -80,13 +79,13 @@ test_gen = generator_from_file(f_test, num_classes = num_classes)
 # model
 model = unet(num_classes = num_classes)
 
-mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=True, monitor='accuracy', verbose=1)
-reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='accuracy', factor=0.1, patience=2, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
+mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=True, monitor='val_accuracy', verbose=1)
+reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_accuracy', factor=0.1, patience=2, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 callbacks_list = [reduce_lr, mcp_save]
 
 model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-# with tf.device('/cpu:0'):
-model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 320, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
+with tf.device('/cpu:0'):
+  model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
 

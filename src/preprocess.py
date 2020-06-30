@@ -7,11 +7,21 @@ max_h = 496
 max_w = 496
 
 # functions
-def pad(feature_map, w = 496, h = 496):
-    result = np.zeros((w, h))
-    result[:feature_map.shape[0],:feature_map.shape[1]] = feature_map
-    
-    return result
+def pad(x, pad_even=True, depth=4):
+    divisor = np.power(2, depth)
+    remainder = x.shape[0] % divisor
+    # no padding
+    if not pad_even:
+        return x
+    # no padding because already of even shape
+    elif pad_even and remainder == 0:
+        return x
+    # add zero rows after 1D feature
+    elif len(x.shape) == 2:
+        return np.pad(x, [(0, divisor - remainder), (0, 0)], "constant")
+    # add zero columns and rows after 2D feature
+    elif len(x.shape) == 3:
+        return np.pad(x, [(0, divisor - remainder), (0, divisor - remainder), (0, 0)], "constant")
 
 def get_datapoint(f, key, num_classes):
     # X
@@ -19,7 +29,7 @@ def get_datapoint(f, key, num_classes):
     gdca = group[key][()]
     orig_shape = len(gdca)
     gdca = pad(gdca)
-    # print(gdca.shape)
+    print(gdca.shape)
 
     group = f['cross_h']
     cross_h = group[key][()]
@@ -192,7 +202,7 @@ if __name__ == '__main__':
     f = h5py.File(file_name, 'r')
     
     # num_classes = 7, 12, 26
-    datx, daty = get_datapoint_reg(f, '4J32B.hhE0', 26)
+    datx, daty = get_datapoint(f, '4J32B.hhE0', 7)
 
     print(daty.shape, datx.shape)
 

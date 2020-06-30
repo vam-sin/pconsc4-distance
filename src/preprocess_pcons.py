@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+from keras.utils import to_categorical 
 
 def pad(x, pad_even, depth=4):
     divisor = np.power(2, depth)
@@ -17,7 +18,10 @@ def pad(x, pad_even, depth=4):
     elif len(x.shape) == 3:
         return np.pad(x, [(0, divisor - remainder), (0, divisor - remainder), (0, 0)], "constant")
 
-def get_datapoint(h5file, feat_lst, label, binary_cutoffs, key, pad_even=True):
+def get_datapoint(h5file, key, pad_even=True):
+    feat_lst = ['gdca', 'cross_h', 'nmi_corr', 'mi_corr']
+    label = "dist"
+    # key_lst = list(f['gdca'].keys())
     x_i_dict = {}
     for feat in feat_lst:
         if feat in ['sep']:
@@ -40,24 +44,41 @@ def get_datapoint(h5file, feat_lst, label, binary_cutoffs, key, pad_even=True):
         x_i = pad(x_i, pad_even)
         x_i_dict[feat] = x_i[None, ...]
 
-    mask = h5file[label][key][()]
-    mask = mask != 0.0
-    mask = mask[..., None]  # reshape from (L,L) to (L,L,1)
-    mask = pad(mask, pad_even)
-    mask = mask[None, ...]  # reshape from (L,L,1) to (1,L,L,1)
-
     y = h5file[label][key][()]
     y = y[..., None]  # reshape from (L,L) to (L,L,1)
     y = pad(y, pad_even)
     y = y[None, ...]
 
-    y_binary_dict = {}
-    y_dist = h5file["dist"][key][()]
-    for d in binary_cutoffs:
-        y_binary = y_dist < d
-        y_binary = y_binary[..., None]  # reshape from (L,L) to (1,L,L,1)
-        y_binary = pad(y_binary, pad_even)
-        y_binary = y_binary[None, ...]
-        y_binary_dict[d] = y_binary
+    bins = [4, 6, 8, 10, 12, 14]
+    no_bins = 7
+    y = np.searchsorted(bins, y)
+    y = to_categorical(y, num_classes = no_bins)
 
-    return x_i_dict, mask, y, y_binary_dict, L
+    # batch_features_dict = {}
+    # batch_features_dict["input_1"] = x_i_dict["gdca"]
+    # batch_features_dict["input_2"] = x_i_dict["cross_h"]
+    # batch_features_dict["input_3"] = x_i_dict["mi_corr"]
+    # batch_features_dict["input_4"] = x_i_dict["nmi_corr"]
+
+    return x_i_dict, y
+
+if __name__ == '__main__':
+
+    file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
+    f = h5py.File(file_name, 'r')
+    
+    # num_classes = 7, 12, 26
+    feat_lst = ['gdca', 'cross_h', 'nmi_corr', 'mi_corr']
+    label = "dist"
+    key_lst = list(f['gdca'].keys())
+    x_i_dict, y = get_datapoint(f, feat_lst, label, key_lst[2])
+    bins = [4, 6, 8, 10, 12, 14]
+    no_bins = 7
+    batch_labels_dict = {}
+    print(y)
+    y = np.searchsorted(bins, y)
+    print(y)
+    y = to_categorical(y, num_classes = no_bins)
+    batch_labels_dict["out_%s_mask" % label] = y
+
+    print(y.shape)
