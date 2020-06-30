@@ -1,0 +1,11 @@
+# Description of models
+
+unet_2d_7.py
+
+loss: 0.5441 - accuracy: 0.8706 - val_loss: 0.4201 - val_accuracy: 0.8738
+
+Not overfitting.
+
+Input: The four 2D features. 
+Using pcons pad
+Output: 7 classes

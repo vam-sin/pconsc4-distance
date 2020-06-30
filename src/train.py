@@ -84,8 +84,8 @@ reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_accuracy', 
 callbacks_list = [reduce_lr, mcp_save]
 
 model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-with tf.device('/cpu:0'):
-  model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
+# with tf.device('/cpu:0'):
+model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
 
