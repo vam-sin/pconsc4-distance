@@ -22,6 +22,10 @@ reg_strength = float(10**-12)
 reg = l2(reg_strength)
 num_filters = 64
 
+def self_outer(x):
+    outer_x = x[ :, :, None, :] * x[ :, None, :, :]
+    return outer_x
+
 def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="same", depthwise_initializer=init, pointwise_initializer=init, depthwise_regularizer=reg, 
         pointwise_regularizer=reg):
 	x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(x)
@@ -32,13 +36,35 @@ def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="s
 	return x
 
 def unet(num_classes):
-	inp = [Input(shape=(None, None, 1), name="gdca", dtype=K.floatx()), # gdca
+	inp_2d = [Input(shape=(None, None, 1), name="gdca", dtype=K.floatx()), # gdca
                  Input(shape=(None, None, 1), name="mi_corr", dtype=K.floatx()), # mi_corr
                  Input(shape=(None, None, 1), name="nmi_corr", dtype=K.floatx()), # nmi_corr
                  Input(shape=(None, None, 1), name="cross_h", dtype=K.floatx())] # cross_h
+                 
+	inputs_seq = [Input(shape=(None, 22), dtype=K.floatx(), name="seq"), # sequence
+	              Input(shape=(None, 23), dtype=K.floatx(), name="self_info"), # self-information
+	              Input(shape=(None, 23), dtype=K.floatx(), name="part_entr")] # partial entropy
+
+	ss_model = load_model('1d.h5')
+	ss_model.trainable = False
+
+	seq_feature_model = ss_model._layers_by_depth[5][0]
+	#plot_model(seq_feature_model, "seq_feature_model.png")
+
+	assert 'model' in seq_feature_model.name, seq_feature_model.name
+	seq_feature_model.name = 'sequence_features'
+	seq_feature_model.trainable = False
+	for l in ss_model.layers:
+	    l.trainable = False
+	for l in seq_feature_model.layers:
+	    l.trainable = False
+
+	bottleneck_seq = seq_feature_model(inputs_seq)
+	model_1D_outer = Lambda(self_outer)(bottleneck_seq)
+	model_1D_outer = BatchNormalization()(model_1D_outer)
 
 	#Downsampling
-	unet = keras.layers.concatenate(inp)
+	unet = keras.layers.concatenate(inp_2d +  [model_1D_outer])
 	unet = add_2D_conv(unet, num_filters, 1)
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
@@ -103,7 +129,7 @@ def unet(num_classes):
 	output = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg, name="out_dist")(unet)
 
-	model = Model(inputs = inp, outputs = output)
+	model = Model(inputs = inp_2d + inputs_seq, outputs = output)
 	print(model.summary())
 
 	return model 

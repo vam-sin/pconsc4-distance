@@ -44,6 +44,18 @@ def get_datapoint(h5file, key, pad_even=True):
         x_i = pad(x_i, pad_even)
         x_i_dict[feat] = x_i[None, ...]
 
+    seq = h5file["seq"][key][()]
+    seq = pad(seq, pad_even)
+    x_i_dict["seq"] = seq[None, ...]
+
+    part_entr = h5file["part_entr"][key][()]
+    part_entr = pad(part_entr, pad_even)
+    x_i_dict["part_entr"] = part_entr[None, ...]
+
+    self_info = h5file["self_info"][key][()]
+    self_info = pad(self_info, pad_even)
+    x_i_dict["self_info"] = self_info[None, ...]
+
     y = h5file[label][key][()]
     y = y[..., None]  # reshape from (L,L) to (L,L,1)
     y = pad(y, pad_even)
@@ -54,12 +66,6 @@ def get_datapoint(h5file, key, pad_even=True):
     y = np.searchsorted(bins, y)
     y = to_categorical(y, num_classes = no_bins)
 
-    # batch_features_dict = {}
-    # batch_features_dict["input_1"] = x_i_dict["gdca"]
-    # batch_features_dict["input_2"] = x_i_dict["cross_h"]
-    # batch_features_dict["input_3"] = x_i_dict["mi_corr"]
-    # batch_features_dict["input_4"] = x_i_dict["nmi_corr"]
-
     return x_i_dict, y
 
 if __name__ == '__main__':
@@ -68,17 +74,5 @@ if __name__ == '__main__':
     f = h5py.File(file_name, 'r')
     
     # num_classes = 7, 12, 26
-    feat_lst = ['gdca', 'cross_h', 'nmi_corr', 'mi_corr']
-    label = "dist"
-    key_lst = list(f['gdca'].keys())
-    x_i_dict, y = get_datapoint(f, feat_lst, label, key_lst[2])
-    bins = [4, 6, 8, 10, 12, 14]
-    no_bins = 7
-    batch_labels_dict = {}
-    print(y)
-    y = np.searchsorted(bins, y)
-    print(y)
-    y = to_categorical(y, num_classes = no_bins)
-    batch_labels_dict["out_%s_mask" % label] = y
-
-    print(y.shape)
+    key_lst = list(f["gdca"].keys())
+    X, y = get_datapoint(f, key_lst[0])

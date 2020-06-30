@@ -71,7 +71,7 @@ def get_datapoint(f, key, num_classes):
     for i in range(num_cols_needed):
         placeholder = np.zeros((orig_shape,1))
         # print(placeholder.shape)
-        part_entr = np.append(feat_68, placeholder, axis=1)
+        feat_68 = np.append(feat_68, placeholder, axis=1)
 
     feat_68 = pad(feat_68)
     # print(self_info.shape)

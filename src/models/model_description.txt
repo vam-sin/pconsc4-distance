@@ -1,11 +1,37 @@
 # Description of models
 
-unet_2d_7.py
+########
+
+unet_2d_7.h5
 
 loss: 0.5441 - accuracy: 0.8706 - val_loss: 0.4201 - val_accuracy: 0.8738
 
 Not overfitting.
 
-Input: The four 2D features. 
+Input: The four 2D features.
 Using pcons pad
+Output: 7 classes
+
+#########
+
+unet_2d_1to2d_7.h5
+
+loss: 0.5783 - accuracy: 0.8625 - val_loss: 0.8217 - val_accuracy: 0.8584
+
+Not overfitting
+
+Input: The four 2d features plus the 1d converted to 2d using the old pad function.
+Using pcons and old pad.
+Output: 7 classes
+
+##########
+
+unet_2d_1d_7.h5
+
+loss: 0.5915 - accuracy: 0.8742 - val_loss: 0.9245 - val_accuracy: 0.8763
+
+Not overfitting
+
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
 Output: 7 classes

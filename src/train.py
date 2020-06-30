@@ -1,11 +1,3 @@
-'''Tasks
-1. Make train and test datasets - Test Done, Figure out a way to get train also.
-2. Get the unet model - Done
-3. Get training - 
-Training on the test data just to check:
-loss: 6.7063e-04 - accuracy: 0.2352
-'''
-
 # libraries
 import numpy as np 
 import h5py
@@ -62,6 +54,7 @@ def generator_from_file(h5file, num_classes, batch_size=1):
           i = 0
 
       key = key_lst[i]
+      # print(key)
 
       X, y = get_datapoint(h5file, key, num_classes)
 
@@ -84,8 +77,8 @@ reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_accuracy', 
 callbacks_list = [reduce_lr, mcp_save]
 
 model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
-# with tf.device('/cpu:0'):
-model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
+with tf.device('/cpu:0'):
+  model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
 
