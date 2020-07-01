@@ -18,7 +18,7 @@ def pad(x, pad_even, depth=4):
     elif len(x.shape) == 3:
         return np.pad(x, [(0, divisor - remainder), (0, divisor - remainder), (0, 0)], "constant")
 
-def get_datapoint(h5file, key, pad_even=True):
+def get_datapoint(h5file, key, num_classes, pad_even=True):
     feat_lst = ['gdca', 'cross_h', 'nmi_corr', 'mi_corr']
     label = "dist"
     # key_lst = list(f['gdca'].keys())
@@ -61,8 +61,16 @@ def get_datapoint(h5file, key, pad_even=True):
     y = pad(y, pad_even)
     y = y[None, ...]
 
-    bins = [4, 6, 8, 10, 12, 14]
-    no_bins = 7
+    if num_classes == 7:
+        bins = [4, 6, 8, 10, 12, 14]
+        no_bins = 7
+    elif num_classes == 12:
+        bins = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        no_bins = 12
+    elif num_classes == 26:
+        bins = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16]
+        no_bins = 26
+
     y = np.searchsorted(bins, y)
     y = to_categorical(y, num_classes = no_bins)
 

@@ -40,6 +40,8 @@ f_train = h5py.File(train_file_name, 'r')
 test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
 f_test = h5py.File(test_file_name, 'r')
 
+num_classes = 26
+
 def generator_from_file(h5file, num_classes, batch_size=1):
   key_lst = list(h5file['gdca'].keys())
   random.shuffle(key_lst)
@@ -65,7 +67,6 @@ def generator_from_file(h5file, num_classes, batch_size=1):
 
       yield X, batch_labels_dict
 
-num_classes = 7
 train_gen = generator_from_file(f_train, num_classes = num_classes)
 test_gen = generator_from_file(f_test, num_classes = num_classes)
 

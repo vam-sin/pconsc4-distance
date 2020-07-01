@@ -35,3 +35,27 @@ Not overfitting
 Input: four 2d features and 68 1d. 
 Using pcons pad only.
 Output: 7 classes
+
+##########
+
+unet_2d_1d_12.h5
+
+loss: 0.8156 - accuracy: 0.8395 - val_loss: 0.8744 - val_accuracy: 0.8413
+
+Not overfitting
+
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
+Output: 12 classes
+
+##########
+
+unet_2d_1d_26.h5
+
+loss: 1.0794 - accuracy: 0.8021 - val_loss: 1.1051 - val_accuracy: 0.8075
+
+Not overfitting
+
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
+Output: 26 classes
