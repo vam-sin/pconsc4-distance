@@ -50,33 +50,18 @@ if gpus:
 # custom loss
 def weighted_cce_3d(weights): 
   # shape of both (1, None, None, num_classes)
-  @tf.function
   def cce_3d(y_true, y_pred):
-    loss = 0.0
     y_pred = K.squeeze(y_pred, axis=0)
+    y_pred = K.reshape(y_pred, (-1, n_bins))
     y_true = K.squeeze(y_true, axis=0)
-    shape = y_pred.shape
-    # print(shape)
-    L = 0
-    for i in y_pred:
-      L += 1
-    # print(L)
-    for i in range(L):
-      for j in range(L):
-        temp_true = y_true[i][j]
-        temp_pred = y_pred[i][j]
+    y_true = K.reshape(y_true, (-1, n_bins))
 
-        temp_pred /= K.sum(temp_pred, axis=-1, keepdims=True)
-        # clip to prevent NaN's and Inf's
-        temp_pred = K.clip(temp_pred, K.epsilon(), 1 - K.epsilon())
-        # calc
-        temp_loss = temp_true * K.log(temp_pred) * weights
-        temp_loss = -K.sum(temp_loss, -1)
-
-        # print(temp_pred.shape, temp_true.shape)
-
-        loss += temp_loss
-        
+    y_pred /= K.sum(y_pred, axis=-1, keepdims=True) # clip to prevent NaN's and Inf's
+    y_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())
+    loss = y_true * K.log(y_pred) * weights
+    loss = -K.sum(loss, -1)
+    loss = K.sum(loss, axis=0)
+      
     return loss
 
   return cce_3d
@@ -100,7 +85,7 @@ threshold_length = int(sys.argv[3])
 range_mode = (sys.argv[4])
 
 if n_bins == 7:
-    model_name = 'unet.h5'
+    model_name = 'models/unet.h5'
     bins = [2, 5, 7, 9, 11, 13, 15]
     prob_len = 3
 

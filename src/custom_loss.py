@@ -73,18 +73,22 @@ y_pred = model.predict(X)
 
 # y_pred = K.argmax(y_pred, axis=-1) 
 y_pred = K.squeeze(y_pred, axis=0)
+y_pred = K.reshape(y_pred, (-1, num_classes))
 # y_true = K.argmax(y, axis=-1)
 y_true = K.squeeze(y, axis=0)
+y_true = K.reshape(y_true, (-1, num_classes))
 
-loss = 0.0
+y_pred /= K.sum(y_pred, axis=-1, keepdims=True)
+# clip to prevent NaN's and Inf's
+y_pred = K.clip(y_pred, K.epsilon(), 1 - K.epsilon())
+# calc
+loss = y_true * K.log(y_pred) * weights
+loss = -K.sum(loss, -1)
 
-for i in range(len(y_pred)):
-	for j in range(len(y_pred[i])):
-		temp_true = y_true[i][j]
-		temp_pred = y_pred[i][j]
+print(y_true.shape, y_pred.shape)
+print(loss)
 
-		loss += 
-		print(temp_pred, temp_true)
-
+loss = K.sum(loss, axis=0)
+print(loss)
 # print(y_pred, y_true)
 

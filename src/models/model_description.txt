@@ -2,6 +2,19 @@
 
 ##########
 
+unet_2d_1d_7_newloss.h5
+
+val_accuracy: 65%
+train_accuracy: 70%
+
+Overfitting
+
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
+Output: 7 classes
+
+##########
+
 unet_2d_1d_7.h5
 
 loss: 0.5915 - accuracy: 0.8742 - val_loss: 0.9245 - val_accuracy: 0.8763
