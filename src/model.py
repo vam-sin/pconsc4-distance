@@ -2,12 +2,13 @@
 import keras
 import keras.backend as K
 from keras.regularizers import l2
+import tensorflow as tf
 from keras.layers import Activation
 from keras.layers.core import Lambda
 from keras.models import Model, load_model
 from keras.utils import np_utils, plot_model
 from keras.layers.merge import concatenate
-from keras.layers import Input, Dropout, BatchNormalization
+from keras.layers import Input, Dropout, BatchNormalization, Reshape
 from keras.layers.advanced_activations import ELU, LeakyReLU
 from keras.layers import Conv2D, Conv1D, MaxPooling2D, UpSampling2D
 from keras.layers.convolutional import Deconv2D as Conv2DTranspose
@@ -21,6 +22,18 @@ init = "he_normal"
 reg_strength = float(10**-12)
 reg = l2(reg_strength)
 num_filters = 64
+
+
+def reshape_2d(x3d):
+    shape = tf.shape(x3d) # get dynamic tensor shape
+    x3d = tf.reshape(x3d, [ shape[0] * shape[1], shape[2] ] )
+    return x3d
+
+def reshape_2d_shape(x4d_shape):
+    in_batch, in_rows, in_cols, in_filters = x4d_shape
+    output_shape = (None, in_filters)
+   
+    return output_shape
 
 def self_outer(x):
     outer_x = x[ :, :, None, :] * x[ :, None, :, :]
@@ -126,10 +139,12 @@ def unet(num_classes):
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
 
-	output = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
+	outconv = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg, name="out_dist")(unet)
 
-	model = Model(inputs = inp_2d + inputs_seq, outputs = output)
+	# output = Reshape((-1,), name="out_dist")(outconv)
+
+	model = Model(inputs = inp_2d + inputs_seq, outputs = outconv)
 	print(model.summary())
 
 	return model 

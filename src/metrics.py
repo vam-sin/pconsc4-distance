@@ -12,6 +12,7 @@ import functools
 
 from keras.models import load_model
 import numpy as np
+import keras.backend as K
 # np.set_printoptions(threshold=np.nan)
 
 from Bio import pairwise2
@@ -46,6 +47,40 @@ if gpus:
         # Virtual devices must be set before GPUs have been initialized
         print(e)
 
+# custom loss
+def weighted_cce_3d(weights): 
+  # shape of both (1, None, None, num_classes)
+  @tf.function
+  def cce_3d(y_true, y_pred):
+    loss = 0.0
+    y_pred = K.squeeze(y_pred, axis=0)
+    y_true = K.squeeze(y_true, axis=0)
+    shape = y_pred.shape
+    # print(shape)
+    L = 0
+    for i in y_pred:
+      L += 1
+    # print(L)
+    for i in range(L):
+      for j in range(L):
+        temp_true = y_true[i][j]
+        temp_pred = y_pred[i][j]
+
+        temp_pred /= K.sum(temp_pred, axis=-1, keepdims=True)
+        # clip to prevent NaN's and Inf's
+        temp_pred = K.clip(temp_pred, K.epsilon(), 1 - K.epsilon())
+        # calc
+        temp_loss = temp_true * K.log(temp_pred) * weights
+        temp_loss = -K.sum(temp_loss, -1)
+
+        # print(temp_pred.shape, temp_true.shape)
+
+        loss += temp_loss
+        
+    return loss
+
+  return cce_3d
+
 three_to_one = {'ASP': 'D', 'GLU': 'E', 'ASN': 'N', 'GLN': 'Q', 'ARG': 'R', 'LYS': 'K', 'PRO': 'P', 'GLY': 'G',
                 'CYS': 'C', 'THR': 'T', 'SER': 'S', 'MET': 'M', 'TRP': 'W', 'PHE': 'F', 'TYR': 'Y', 'HIS': 'H',
                 'ALA': 'A', 'VAL': 'V', 'LEU': 'L', 'ILE': 'I', 'MSE': 'M'}
@@ -65,7 +100,7 @@ threshold_length = int(sys.argv[3])
 range_mode = (sys.argv[4])
 
 if n_bins == 7:
-    model_name = 'models/unet_2d_1d_7.h5'
+    model_name = 'unet.h5'
     bins = [2, 5, 7, 9, 11, 13, 15]
     prob_len = 3
 
@@ -418,8 +453,9 @@ def fpr_calc(contacts, l_threshold, range_, pdb_parsed):
 
 lengths = dict((line.split(',')[0], int(line.split(',')[1])) for line in open('testset/testing/benchmark_set/lengths.txt'))
 
-
-m = load_model(model_name)
+weights = [2.00393768, 8.01948742, 6.77744028, 5.19939732, 3.37958688, 3.08356088, 0.18463084]
+loss_fn = weighted_cce_3d(weights = weights)
+m = load_model(model_name, custom_objects = {'cce_3d': loss_fn})
 
 out_pm = 'results/results_' + str(thres) + '_' + str(range_mode) + '_' + str(model_name).replace('models/', '') + '.txt' 
 print()

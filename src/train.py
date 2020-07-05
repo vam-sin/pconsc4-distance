@@ -1,3 +1,6 @@
+# tasks
+# Make your own custom weighted categorical cross entropy loss function
+
 # libraries
 import numpy as np 
 import h5py
@@ -8,6 +11,7 @@ import random
 import keras
 from keras.models import load_model 
 from sklearn.metrics import classification_report, confusion_matrix
+import keras.backend as K
 
 # GPU
 from tensorflow.compat.v1 import ConfigProto
@@ -35,6 +39,45 @@ if gpus:
         # Virtual devices must be set before GPUs have been initialized
         print(e)
 
+from keras import backend as K
+
+
+def weighted_cce_3d(weights): 
+  # shape of both (1, None, None, num_classes)
+  @tf.function
+  def cce_3d(y_true, y_pred):
+    loss = 0.0
+    y_pred = K.squeeze(y_pred, axis=0)
+    y_true = K.squeeze(y_true, axis=0)
+    shape = y_pred.shape
+    # print(shape)
+    L = 0
+    for i in y_pred:
+      L += 1
+    # print(L)
+    for i in range(L):
+      for j in range(L):
+        temp_true = y_true[i][j]
+        temp_pred = y_pred[i][j]
+
+        temp_pred /= K.sum(temp_pred, axis=-1, keepdims=True)
+        # clip to prevent NaN's and Inf's
+        temp_pred = K.clip(temp_pred, K.epsilon(), 1 - K.epsilon())
+        # calc
+        temp_loss = temp_true * K.log(temp_pred) * weights
+        temp_loss = -K.sum(temp_loss, -1)
+
+        # print(temp_pred.shape, temp_true.shape)
+
+        loss += temp_loss
+        
+    return loss
+
+  return cce_3d
+
+
+
+
 # functions
 train_file_name = "../Datasets/PconsC4-data/data/training_pdbcull_170914_A_before160501.h5"
 f_train = h5py.File(train_file_name, 'r')
@@ -42,7 +85,11 @@ f_train = h5py.File(train_file_name, 'r')
 test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
 f_test = h5py.File(test_file_name, 'r')
 
-num_classes = 26
+num_classes = 7
+
+if num_classes == 7:
+  weights = [2.00393768, 8.01948742, 6.77744028, 5.19939732, 3.37958688, 3.08356088, 0.18463084]
+  weights = np.asarray(weights)
 
 def generator_from_file(h5file, num_classes, batch_size=1):
   key_lst = list(h5file['gdca'].keys())
@@ -63,7 +110,24 @@ def generator_from_file(h5file, num_classes, batch_size=1):
       X, y = get_datapoint(h5file, key, num_classes)
 
       batch_labels_dict = {}
+
+      # new_w = []
+      # for p in range(y.shape[1]):
+      #   for q in range(y.shape[1]):
+      #     new_w.append(weights)
+
+      #   # new_w.append(temp)
+
+      # new_w = np.asarray(new_w)
+      # new_w_shape = new_w.shape
+      # new_w = np.reshape(new_w, (1, new_w_shape[0]*new_w.shape[1]))
+      # # print(new_w.shape)
+
+      # curr_y_shape = y.shape 
+      # y = np.reshape(y, (curr_y_shape[1] * curr_y_shape[2], num_classes))
       batch_labels_dict["out_dist"] = y
+
+      # print(y.shape, new_w.shape)
 
       i += 1
 
@@ -79,63 +143,65 @@ mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=T
 reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_accuracy', factor=0.1, patience=2, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 callbacks_list = [reduce_lr, mcp_save]
 
-model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+loss_fn = weighted_cce_3d(weights = weights)
+opt = keras.optimizers.SGD(learning_rate = 0.1)
+model.compile(optimizer = opt, loss = loss_fn, metrics = ['accuracy'])
 # with tf.device('/cpu:0'):
-  # model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
+model.fit_generator(train_gen, epochs = 10, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 # PPV Evaludation 
-model = load_model('models/unet_2d_1d_26.h5')
-key_lst = list(f_test['gdca'].keys())
-y_true = []
-y_pred = []
-for i in range(210):
-  print(i+1)
-  X, y = get_datapoint(f_test, key_lst[i], num_classes)
-  y_pred.append(model.predict(X))
-  y_true.append(y)
+# model = load_model('models/unet_2d_1d_26.h5')
+# key_lst = list(f_test['gdca'].keys())
+# y_true = []
+# y_pred = []
+# for i in range(210):
+#   print(i+1)
+#   X, y = get_datapoint(f_test, key_lst[i], num_classes)
+#   y_pred.append(model.predict(X))
+#   y_true.append(y)
 
-one_y_true = []
-one_y_pred = []
+# one_y_true = []
+# one_y_pred = []
 
-for i in y_true:
-  # ith complex (None, None, num_classes)
-  # temp = np.asarray(i)
-  # print(temp.shape)
-  for j in i:
-    for k in j:
-      for p in k:
-        # num_classes
-        one_y_true.append(np.argmax(p))
+# for i in y_true:
+#   # ith complex (None, None, num_classes)
+#   # temp = np.asarray(i)
+#   # print(temp.shape)
+#   for j in i:
+#     for k in j:
+#       for p in k:
+#         # num_classes
+#         one_y_true.append(np.argmax(p))
 
-# temp1 = np.asarray(y_pred)
-# temp2 = np.asarray(y_true)
-# print(temp1.shape, temp2.shape)
-for i in y_pred:
-  # ith complex (None, None, num_classes)
-  # temp = np.asarray(i)
-  # print(temp.shape)
-  for j in i:
-    for k in j:
-      for p in k:
-        # print(p)
+# # temp1 = np.asarray(y_pred)
+# # temp2 = np.asarray(y_true)
+# # print(temp1.shape, temp2.shape)
+# for i in y_pred:
+#   # ith complex (None, None, num_classes)
+#   # temp = np.asarray(i)
+#   # print(temp.shape)
+#   for j in i:
+#     for k in j:
+#       for p in k:
+#         # print(p)
 
-        one_y_pred.append(np.argmax(p))
+#         one_y_pred.append(np.argmax(p))
 
 
-print(len(one_y_pred), len(one_y_true))
+# print(len(one_y_pred), len(one_y_true))
 
-confusion_matrix = confusion_matrix(one_y_true, one_y_pred)
+# confusion_matrix = confusion_matrix(one_y_true, one_y_pred)
 
-FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
-FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
-TP = np.diag(confusion_matrix)
-TN = confusion_matrix.sum() - (FP + FN + TP)
+# FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
+# FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
+# TP = np.diag(confusion_matrix)
+# TN = confusion_matrix.sum() - (FP + FN + TP)
 
-ACC = (TP+TN)/(TP+FP+FN+TN)
-PPV = TP/(TP+FP)
+# ACC = (TP+TN)/(TP+FP+FN+TN)
+# PPV = TP/(TP+FP)
 
-print("Accuracy: ", ACC)
-print("PPV: ", PPV)
+# print("Accuracy: ", ACC)
+# print("PPV: ", PPV)
 
 '''
 num_classes = 7
