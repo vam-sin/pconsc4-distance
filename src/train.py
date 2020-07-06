@@ -109,11 +109,11 @@ test_gen = generator_from_file(f_test, num_classes = num_classes)
 model = unet(num_classes = num_classes)
 
 mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=True, monitor='val_loss', verbose=1)
-reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=2, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
+reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 callbacks_list = [reduce_lr, mcp_save]
 
 loss_fn = weighted_cce_3d(weights = weights)
-opt = keras.optimizers.SGD(learning_rate = 0.1)
+sgd = keras.optimizers.SGD(learning_rate = 1e-3)
 model.compile(optimizer = 'adam', loss = loss_fn, metrics = ['accuracy'])
 with tf.device('/cpu:0'):
   model.fit_generator(train_gen, epochs = 50, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)

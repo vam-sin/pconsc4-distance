@@ -46,6 +46,11 @@ def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="s
 	x = act()(x)
 	x = BatchNormalization()(x)
 
+	# x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(x)
+	# x = Dropout(dropout)(x)
+	# x = act()(x)
+	# x = BatchNormalization()(x)
+
 	return x
 
 def unet(num_classes):
