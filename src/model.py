@@ -23,33 +23,16 @@ reg_strength = float(10**-12)
 reg = l2(reg_strength)
 num_filters = 64
 
-
-def reshape_2d(x3d):
-    shape = tf.shape(x3d) # get dynamic tensor shape
-    x3d = tf.reshape(x3d, [ shape[0] * shape[1], shape[2] ] )
-    return x3d
-
-def reshape_2d_shape(x4d_shape):
-    in_batch, in_rows, in_cols, in_filters = x4d_shape
-    output_shape = (None, in_filters)
-   
-    return output_shape
-
 def self_outer(x):
     outer_x = x[ :, :, None, :] * x[ :, None, :, :]
     return outer_x
 
-def add_2D_conv(x, filters, kernel_size, data_format="channels_last", padding="same", depthwise_initializer=init, pointwise_initializer=init, depthwise_regularizer=reg, 
+def add_2D_conv(inp, filters, kernel_size, data_format="channels_last", padding="same", depthwise_initializer=init, pointwise_initializer=init, depthwise_regularizer=reg, 
         pointwise_regularizer=reg):
-	x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(x)
+	x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(inp)
 	x = Dropout(dropout)(x)
 	x = act()(x)
 	x = BatchNormalization()(x)
-
-	# x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(x)
-	# x = Dropout(dropout)(x)
-	# x = act()(x)
-	# x = BatchNormalization()(x)
 
 	return x
 
@@ -144,16 +127,20 @@ def unet(num_classes):
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
 
-	outconv = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
+	output = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg, name="out_dist")(unet)
 
-	# output = Reshape((-1,), name="out_dist")(outconv)
-
-	model = Model(inputs = inp_2d + inputs_seq, outputs = outconv)
+	model = Model(inputs = inp_2d + inputs_seq, outputs = output)
 	print(model.summary())
 
 	return model 
 
 if __name__ == '__main__':
 	model = unet(7)
+
+# model ideas
+'''
+turn the add_2d_conv into residual blocks
+turn the add_2d_conv into dense blocks
+'''
 

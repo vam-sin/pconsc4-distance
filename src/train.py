@@ -60,6 +60,29 @@ def weighted_cce_3d(weights):
 
   return cce_3d
 
+def jaccard_distance_loss(smooth=100):
+
+  def jdl(y_true, y_pred):
+    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+    sum_ = K.sum(K.abs(y_true) + K.abs(y_pred), axis=-1)
+    jac = (intersection + smooth) / (sum_ - intersection + smooth)
+
+    loss = (1 - jac) * smooth
+
+    return loss
+
+  return jdl 
+
+def dice_coef_loss(smooth=1):
+  
+  def dice_coef(y_true, y_pred):
+      intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+      loss = (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
+      loss = 1 - loss 
+      
+      return loss
+
+  return dice_coef
 
 
 
@@ -112,14 +135,20 @@ mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=T
 reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 callbacks_list = [reduce_lr, mcp_save]
 
-loss_fn = weighted_cce_3d(weights = weights)
+loss_fn = weighted_cce_3d(weights)
 sgd = keras.optimizers.SGD(learning_rate = 1e-3)
 model.compile(optimizer = 'adam', loss = loss_fn, metrics = ['accuracy'])
 with tf.device('/cpu:0'):
   model.fit_generator(train_gen, epochs = 50, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
+'''PPV:
+weighted_cce_3d || Adam: 'adam' || Basic Unet: 0.08555078836645191
+jaccard_loss || Adam: 'adam' || Basic Unet: 0.009156813973790874
+dice_coef || Adam: 'adam' || Basic Unet: 
 
+Jaccard Coefficient Loss, Dice Coef Loss didn't increase accuracy.
+'''
 
 
 

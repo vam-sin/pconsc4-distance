@@ -439,7 +439,7 @@ def fpr_calc(contacts, l_threshold, range_, pdb_parsed):
 lengths = dict((line.split(',')[0], int(line.split(',')[1])) for line in open('testset/testing/benchmark_set/lengths.txt'))
 
 weights = [2.00393768, 8.01948742, 6.77744028, 5.19939732, 3.37958688, 3.08356088, 0.18463084]
-loss_fn = weighted_cce_3d(weights = weights)
+loss_fn = weighted_cce_3d(weights)
 m = load_model(model_name, custom_objects = {'cce_3d': loss_fn})
 
 out_pm = 'results/results_' + str(thres) + '_' + str(range_mode) + '_' + str(model_name).replace('models/', '') + '.txt' 
@@ -463,12 +463,15 @@ for data_file in tqdm.tqdm(glob.glob('testset/testing/benchmark_set/*.npz'), des
     data_batch['mask'][:] = 1.
 
     pred = m.predict(data_batch)[0]
+    print(pred.shape)
     prot_name = data_file.split('/')[-1].split('.')[0]
     length = lengths[prot_name]
+    print(prot_name, length)
     
     pdb_parsed_1 = parse_pdb_1('testset/testing/benchmarkset/{}/native.pdb'.format(prot_name))
     
     pdb_parsed = parse_pdb('testset/testing/benchmarkset/{}/native.pdb'.format(prot_name))
+    print(pdb_parsed_1, pdb_parsed)
     contacts_parsed = parse_contact_matrix(pred.squeeze())
     
     ab_error, rel_error = error_metrics(contacts_parsed, threshold_length, range_mode,  pdb_parsed_1)
