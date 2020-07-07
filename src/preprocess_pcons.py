@@ -83,4 +83,5 @@ if __name__ == '__main__':
     
     # num_classes = 7, 12, 26
     key_lst = list(f["gdca"].keys())
-    X, y = get_datapoint(f, key_lst[0])
+    X, y = get_datapoint(f, key_lst[0], 7)
+    print(y, f["dist"][key_lst[0]][()])
