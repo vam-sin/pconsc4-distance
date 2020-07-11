@@ -5,7 +5,7 @@
 import numpy as np 
 import h5py
 from preprocess_pcons import get_datapoint
-from model import unet
+from model_unet import unet
 import pickle
 import random
 import keras
@@ -26,7 +26,7 @@ gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.333)
 
 sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
 
-LIMIT = 3 * 1024
+LIMIT = 4 * 1024
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
@@ -84,6 +84,85 @@ def dice_coef_loss(smooth=1):
 
   return dice_coef
 
+def distance_from_bins(pred, mids):
+  dist = 0.0
+  for i in range(len(pred)):
+    dist += pred[i] * mids[i]
+
+  return dist
+
+def thresh_loss(thres = 8.0, threshold_length = 1, bins = [4, 6, 8, 10, 12, 14], mids = [2, 5, 7, 9, 11, 13, 15]):
+  
+  @tf.function
+  def tl(y_true, y_pred):
+    y_pred = K.squeeze(y_pred, axis=0)
+
+    # distance calculation
+    y_true_dist = K.squeeze(y_true, axis=0)
+
+    L = 0
+    for i in y_true_dist:
+      L += 1
+    print(L, y_true_dist.shape)
+    
+    y_pred_dist = [] # i, j, dist
+
+    for i in range(L):
+      for j in range(L):
+        dist = distance_from_bins(y_pred[i][j], mids)
+        row = [i, j, dist]
+        y_pred_dist.append(row)
+
+    y_pred_dist = np.asarray(y_pred_dist)
+
+    # sort ascending order of dist
+    sorted_y_pred_dist = y_pred_dist[np.argsort(y_pred_dist[:, 2])]
+
+    # Remove that have less than five residues between them
+    del_rows = []
+    for i in range(len(sorted_y_pred_dist)):
+      if abs(sorted_y_pred_dist[i][0] - sorted_y_pred_dist[i][1]) < 6:
+        del_rows.append(i)
+
+    rem_sorted_pred_dist = []
+    for i in range(len(sorted_y_pred_dist)):
+      if i not in del_rows:
+        rem_sorted_pred_dist.append(sorted_y_pred_dist[i])
+
+    rem_sorted_pred_dist = np.asarray(rem_sorted_pred_dist)
+
+    # choose top L
+    num_choose = threshold_length * L 
+    chosen_y_pred = rem_sorted_pred_dist[0:num_choose,]
+
+    # check with ground truth
+    # give all y_pred 1
+    # for each i, j in y_pred, if y_true[i][j] < 8.0 then 1, else 0
+    y_pred = np.ones((num_choose,))
+    y_true = []
+
+    for i in range(len(chosen_y_pred)):
+      ind1 = int(chosen_y_pred[i][0])
+      ind2 = int(chosen_y_pred[i][1])
+      if y_true_dist[ind1][ind2] < thres:
+        y_true.append(1)
+      else:
+        y_true.append(0)
+
+    cm = confusion_matrix(y_true, y_pred)
+    precision = np.diag(cm) / np.sum(cm, axis = 0)
+    print(cm, precision)
+    try:
+      loss = cm[0][1]/(np.sum(cm))
+    except:
+      loss = 0.0
+
+    return loss 
+
+  return tl 
+
+
+
 
 
 # functions
@@ -131,23 +210,29 @@ test_gen = generator_from_file(f_test, num_classes = num_classes)
 # model
 model = unet(num_classes = num_classes)
 
-mcp_save = keras.callbacks.callbacks.ModelCheckpoint('unet.h5', save_best_only=True, monitor='val_loss', verbose=1)
-reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
+mcp_save = keras.callbacks.callbacks.ModelCheckpoint('fcdensenet103.h5', save_best_only=True, monitor='val_accuracy', verbose=1)
+reduce_lr = keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_accuracy', factor=0.1, patience=5, verbose=1, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 callbacks_list = [reduce_lr, mcp_save]
 
-loss_fn = weighted_cce_3d(weights)
+loss_fn = thresh_loss()
 sgd = keras.optimizers.SGD(learning_rate = 1e-3)
-model.compile(optimizer = 'adam', loss = loss_fn, metrics = ['accuracy'])
+adam = keras.optimizers.Adam(learning_rate = 1e-2)
+model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
 with tf.device('/cpu:0'):
   model.fit_generator(train_gen, epochs = 50, steps_per_epoch = 290, verbose=1, validation_data = test_gen, validation_steps = 210, callbacks = callbacks_list)
 
 
 '''PPV:
-weighted_cce_3d || Adam: 'adam' || Basic Unet: 0.08555078836645191
-jaccard_loss || Adam: 'adam' || Basic Unet: 0.009156813973790874
-dice_coef || Adam: 'adam' || Basic Unet: 
+FC DenseNet 103 Progress:
+Only first Conv: 0.2950595215299744 
 
-Jaccard Coefficient Loss, Dice Coef Loss didn't increase accuracy.
+Modified UNet Progress:
+Added Extra Conv Layer in Add2DConv: 0.6227462202291915
+'''
+
+'''
+Custom Loss Function:
+Number of mismatches b/n y_pred and y_true
 '''
 
 

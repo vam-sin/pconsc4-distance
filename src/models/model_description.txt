@@ -2,37 +2,13 @@
 
 ##########
 
-unet_2d_1d_7_newloss.h5
-
-val_accuracy: 65%
-train_accuracy: 70%
-
-Overfitting
-
-Input: four 2d features and 68 1d. 
-Using pcons pad only.
-Output: 7 classes
-
-##########
-
-unet_2d_1d_7.h5
-
-loss: 0.5915 - accuracy: 0.8742 - val_loss: 0.9245 - val_accuracy: 0.8763
-
-Not overfitting
-
-Input: four 2d features and 68 1d. 
-Using pcons pad only.
-Output: 7 classes
-
-##########
-
 unet_2d_1d_12.h5
 
 loss: 0.8156 - accuracy: 0.8395 - val_loss: 0.8744 - val_accuracy: 0.8413
 
 Not overfitting
 
+Loss: plain categorical cross entropy
 Input: four 2d features and 68 1d. 
 Using pcons pad only.
 Output: 12 classes
@@ -45,8 +21,43 @@ loss: 1.0794 - accuracy: 0.8021 - val_loss: 1.1051 - val_accuracy: 0.8075
 
 Not overfitting
 
+Loss: plain categorical cross entropy
 Input: four 2d features and 68 1d. 
 Using pcons pad only.
 Output: 26 classes
 
-##### Trial with weighted cross-entropy loss function: #####
+##########
+
+unet_2d_1d_7_w.h5
+
+Loss: weighted categorical cross entropy
+PPV: 0.48115964749340046
+Output: 7 classes
+
+##########
+
+unet_2d_1d_7.h5
+
+loss: 0.5915 - accuracy: 0.8742 - val_loss: 0.9245 - val_accuracy: 0.8763
+PPV: 0.49251346888342995
+
+Not overfitting
+
+Loss: plain categorical cross entropy
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
+Output: 7 classes
+
+##########
+
+mod_unet_7_672.h5
+
+PPV: 0.6724122766679188
+loss: 0.5276 - accuracy: 0.8772 - val_loss: 0.4170 - val_accuracy: 0.8830
+
+Not overfitting
+
+Loss: plain categorical cross entropy
+Input: four 2d features and 68 1d. 
+Using pcons pad only.
+Output: 7 classes

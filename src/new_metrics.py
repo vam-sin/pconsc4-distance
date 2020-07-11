@@ -47,7 +47,7 @@ threshold_length = 1
 
 # define bins and pretrained models
 if num_classes == 7:
-    model_name = 'models/unet_2d_1d_7.h5'
+    model_name = 'models/fcdensenet103.h5'
     bins = [4, 6, 8, 10, 12, 14]
     mids = [2, 5, 7, 9, 11, 13, 15]
     # 0-4 is the first class
@@ -56,9 +56,11 @@ if num_classes == 7:
 elif num_classes == 12:
     model_name = 'models/unet_2d_1d_12.h5'
     bins = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    mids = [2.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5]
 elif num_classes == 26:
     model_name = 'models/unet_2d_1d_26.h5'
     bins = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16]
+    mids = [2, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25]
 
 # test data
 test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
@@ -66,19 +68,13 @@ f_test = h5py.File(test_file_name, 'r')
 
 def generator_from_file(h5file, num_classes, batch_size=1):
   key_lst = list(h5file['gdca'].keys())
-  # random.shuffle(key_lst)
   i = 0
 
   while True:
-      # TODO: different batch sizes with padding to max(L)
-      # for i in range(batch_size):
-      # index = random.randint(1, len(features)-1)
       if i == len(key_lst):
-          # random.shuffle(key_lst)
           i = 0
 
       key = key_lst[i]
-      # print(key)
 
       X, y = get_datapoint(h5file, key, num_classes)
 
@@ -111,6 +107,17 @@ def weighted_cce_3d(weights):
     return loss
 
   return cce_3d
+
+def dice_coef_loss(smooth=1):
+  
+  def dice_coef(y_true, y_pred):
+      intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+      loss = (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
+      loss = 1 - loss 
+      
+      return loss
+
+  return dice_coef
 
 def distance_from_bins(pred, mids):
   dist = 0.0
@@ -181,7 +188,11 @@ for sample in tqdm(range(num_samples)):
 
   cm = confusion_matrix(y_true, y_pred)
   precision = np.diag(cm) / np.sum(cm, axis = 0)
-  prec.append(precision[1])
+  print(cm, precision)
+  try:
+    prec.append(precision[1])
+  except:
+    prec.append(1.0)
 
 prec = np.asarray(prec)
 print("PPV: ", np.mean(prec))
@@ -198,4 +209,5 @@ Results: PPV
 7 classes 
 Weighted CCE: 0.48115964749340046
 Vanilla CCE: 0.49251346888342995
+Dice Loss: 0.06750798027508643 (Useless)
 '''
