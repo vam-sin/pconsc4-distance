@@ -27,7 +27,8 @@ if gpus:
 
 # Libraries
 import h5py
-from preprocess_pcons import get_datapoint
+from preprocess_pcons import get_datapoint_align, get_datapoint
+from alignment_process import _generate_features
 from keras.models import load_model 
 from keras import backend as K
 from sklearn.metrics import classification_report, confusion_matrix
@@ -47,7 +48,7 @@ threshold_length = 1
 
 # define bins and pretrained models
 if num_classes == 7:
-    model_name = 'models/fcdensenet103.h5'
+    model_name = 'models/model_unet_7_672.h5'
     bins = [4, 6, 8, 10, 12, 14]
     mids = [2, 5, 7, 9, 11, 13, 15]
     # 0-4 is the first class
@@ -75,8 +76,12 @@ def generator_from_file(h5file, num_classes, batch_size=1):
           i = 0
 
       key = key_lst[i]
-
-      X, y = get_datapoint(h5file, key, num_classes)
+      foldername = key.replace('.hhE0', '')
+      align_fname = 'testset/testing/benchmarkset/' + foldername + '/alignment.a3m'
+      feature_dict, b, c = _generate_features(align_fname)
+      # print(feature_dict)
+      # X, y = get_datapoint(h5file, key, num_classes)
+      X, y = get_datapoint_align(h5file, feature_dict, key, num_classes)
 
       batch_labels_dict = {}
 
@@ -207,7 +212,5 @@ In these top L check those that have a ground truth distance value less than 8 a
 Results: PPV
 
 7 classes 
-Weighted CCE: 0.48115964749340046
-Vanilla CCE: 0.49251346888342995
-Dice Loss: 0.06750798027508643 (Useless)
+Vanilla CCE: PPV:  0.6715637744355714
 '''

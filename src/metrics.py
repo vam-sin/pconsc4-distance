@@ -85,7 +85,7 @@ threshold_length = int(sys.argv[3])
 range_mode = (sys.argv[4])
 
 if n_bins == 7:
-    model_name = 'models/unet.h5'
+    model_name = 'models/model_unet_7_672.h5'
     bins = [2, 5, 7, 9, 11, 13, 15]
     prob_len = 3
 
@@ -463,15 +463,15 @@ for data_file in tqdm.tqdm(glob.glob('testset/testing/benchmark_set/*.npz'), des
     data_batch['mask'][:] = 1.
 
     pred = m.predict(data_batch)[0]
-    print(pred.shape)
+    # print(pred.shape)
     prot_name = data_file.split('/')[-1].split('.')[0]
     length = lengths[prot_name]
-    print(prot_name, length)
+    # print(prot_name, length)
     
     pdb_parsed_1 = parse_pdb_1('testset/testing/benchmarkset/{}/native.pdb'.format(prot_name))
     
     pdb_parsed = parse_pdb('testset/testing/benchmarkset/{}/native.pdb'.format(prot_name))
-    print(pdb_parsed_1, pdb_parsed)
+    # print(pdb_parsed_1, pdb_parsed)
     contacts_parsed = parse_contact_matrix(pred.squeeze())
     
     ab_error, rel_error = error_metrics(contacts_parsed, threshold_length, range_mode,  pdb_parsed_1)

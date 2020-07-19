@@ -224,7 +224,7 @@ with tf.device('/cpu:0'):
 
 '''PPV:
 FC DenseNet 103 Progress:
-Only first Conv: 0.2950595215299744 
+Only first Conv: 0.6724122766679188
 
 Modified UNet Progress:
 Added Extra Conv Layer in Add2DConv: 0.6227462202291915
