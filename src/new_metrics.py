@@ -141,7 +141,6 @@ with tf.device('/cpu:0'):
   for sample in tqdm(range(num_samples)):
     X, y_true, key = next(test_gen)
     y_pred = model.predict(X)
-    print(y_pred.shape)
     y_pred = np.squeeze(y_pred, axis=0)
 
     # distance calculation
@@ -149,12 +148,19 @@ with tf.device('/cpu:0'):
 
     L = len(y_true_dist)
     y_pred_dist = [] # i, j, dist
+    unique_i_j = []
 
     for i in range(L):
       for j in range(L):
-        dist = distance_from_bins(y_pred[i][j], mids)
-        row = [i, j, dist]
-        y_pred_dist.append(row)
+        if i <= j:
+          temp = [i, j]
+        else:
+          temp = [j, i]
+        if temp not in unique_i_j:
+          dist = distance_from_bins(y_pred[i][j], mids)
+          row = [i, j, dist]
+          y_pred_dist.append(row)
+          unique_i_j.append(temp) # this is done so that only one of (i,j) & (j, i) is included (the matrix is symmetric)
 
     y_pred_dist = np.asarray(y_pred_dist)
 
@@ -213,5 +219,5 @@ In these top L check those that have a ground truth distance value less than 8 a
 Results: PPV
 
 7 classes 
-Vanilla CCE: PPV:  0.6715637744355714
+Vanilla CCE: PPV:  0.5591865122940344
 '''

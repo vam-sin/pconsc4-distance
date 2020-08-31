@@ -39,8 +39,8 @@ from tqdm import tqdm
 # parameters
 # Number of bins used for classification (Based on model_name)
 num_classes = 37
-bins = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5]
-mids = [2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25, 16.75, 17.25, 17.75, 18.25, 18.75, 19.25, 19.75, 20.25]
+bins = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20]
+mids = [20.25, 2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25, 16.75, 17.25, 17.75, 18.25, 18.75, 19.25, 19.75]
 
 # Distance threshold to calculate all the other measures (8 or 15)
 thres = 8.0
@@ -56,6 +56,7 @@ pred_folder = '/home/vamsi/Internships/Stockholm/Repos/bioinfo-toolbox/trRosetta
 
 # prob bins to dist
 def distance_from_bins(pred, mids):
+  # dist = mids[np.argmax(pred)]
   dist = 0.0
   for i in range(len(pred)):
     dist += pred[i] * mids[i]
@@ -70,23 +71,29 @@ with tf.device('/cpu:0'):
     pred_file = pred_folder + key_lst[sample].replace('.hhE0', '') + '.npz'
     data = np.load(pred_file)
     y_pred = data["dist"]
-    print(y_pred.shape)
 
     # distance calculation
     y_true_dist = f_test["dist"][key_lst[sample]][()]
-    print(y_true_dist.shape)
 
     L = len(y_true_dist)
+
+    # print(np.mean(abs_val))
     y_pred_dist = [] # i, j, dist
+    unique_i_j = []
 
     for i in range(L):
       for j in range(L):
-        dist = distance_from_bins(y_pred[i][j], mids)
-        row = [i, j, dist]
-        y_pred_dist.append(row)
+        if i <= j:
+          temp = [i, j]
+        else:
+          temp = [j, i]
+        if temp not in unique_i_j:
+          dist = distance_from_bins(y_pred[i][j], mids)
+          row = [i, j, dist]
+          y_pred_dist.append(row)
+          unique_i_j.append(temp) # this is done so that only one of (i,j) & (j, i) is included (the matrix is symmetric)
 
     y_pred_dist = np.asarray(y_pred_dist)
-    print(y_pred_dist.shape)
 
     # sort ascending order of dist
     sorted_y_pred_dist = y_pred_dist[np.argsort(y_pred_dist[:, 2])]
@@ -106,35 +113,29 @@ with tf.device('/cpu:0'):
 
     # choose top L
     num_choose = threshold_length * L 
-    chosen_y_pred = rem_sorted_pred_dist[0:num_choose,]
-
-    # for i in range(len(chosen_y_pred)):
-    #   ind1 = int(chosen_y_pred[i][0])
-    #   ind2 = int(chosen_y_pred[i][1])
-    #   print(ind1, ind2, y_true_dist[ind1][ind2], distance_from_bins(y_pred[ind1][ind2], mids))
 
     # check with ground truth
     # give all y_pred 1
     # for each i, j in y_pred, if y_true[i][j] < 8.0 then 1, else 0
-    y_pred = np.ones((num_choose,))
-    y_true = []
+    y_pred_final = np.ones((num_choose,))
+    y_true_final = []
 
-    for i in range(len(chosen_y_pred)):
-      ind1 = int(chosen_y_pred[i][0])
-      ind2 = int(chosen_y_pred[i][1])
-      # print(y_true_dist[ind1][ind2])
+    for i in range(num_choose):
+      ind1 = int(rem_sorted_pred_dist[i][0])
+      ind2 = int(rem_sorted_pred_dist[i][1])
       if y_true_dist[ind1][ind2] < thres:
-        y_true.append(1)
+        y_true_final.append(1)
       else:
-        y_true.append(0)
+        y_true_final.append(0)
 
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true_final, y_pred_final)
     precision = np.diag(cm) / np.sum(cm, axis = 0)
     print(cm, precision)
     try:
       prec.append(precision[1])
     except:
       prec.append(1.0)
+
 
   prec = np.asarray(prec)
   print("PPV: ", np.mean(prec))
@@ -149,5 +150,8 @@ In these top L check those that have a ground truth distance value less than 8 a
 Results: PPV
 
 37 classes 
-trRosetta PPV: 0.0037436910247970155
+trRosetta PPV:  0.7781857073910398
+trRosetta has four predictions: distance (d), omega, theta and phi.
+The distance range (2 to 20 Å) is binned into 36 equally spaced segments, 0.5 Å each, plus one bin indicating that residues are not in contact.
+First class is non contact and from the second one make the 36 demarcations from 2-20.
 '''
