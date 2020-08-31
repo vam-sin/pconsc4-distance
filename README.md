@@ -4,6 +4,7 @@ An extension to the original PconsC4 model. This model is be capable of predicti
 The input for the model is a multiple sequence alignment file and the output would be a matrix with the predictions.
 
 <img src="/src/images/MSA.png" width="200" height="200">
+<img src="/src/images/2.png" width="200" height="200">
 
 
 # Predictions
