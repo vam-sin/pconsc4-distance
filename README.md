@@ -1,6 +1,10 @@
 # PconsC4 - Distance Prediction
 
-An extension to the original Pcons4 model. This model would be capable of predicting the distance between two residues using the UNet++ Architecture.
+An extension to the original PconsC4 model. This model is be capable of predicting the distance between two residues using the modified UNet++ Architecture.
+The input for the model is a multiple sequence alignment file and the output would be a matrix with the predictions.
+
+![Input Multiple Sequence Alignemnt](/src/images/msa.png)
+![Output Heatmap](/src/images/2.png)
 
 # Predictions
 
