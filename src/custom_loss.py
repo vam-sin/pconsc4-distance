@@ -1,6 +1,7 @@
 import numpy as np 
 import h5py 
-from preprocess_pcons import get_datapoint
+from preprocess_pcons import get_datapoint_align
+from alignment_process import _generate_features
 from keras.models import load_model 
 import keras.backend as K
 from sklearn.metrics import classification_report, confusion_matrix
@@ -83,78 +84,97 @@ def generator_from_file(h5file, num_classes, batch_size=1):
 
 test_gen = generator_from_file(f_test, num_classes = num_classes)
 
-model = load_model('models/unet_2d_1d_7.h5')
+def PPV_Metric(y_pred, y_true):
+  y_pred = K.squeeze(y_pred, axis=0)
+  y_true = K.squeeze(y_true, axis=0)
+
+  # # distance calculation
+  # y_true_dist = f_test["dist"][key][()]
+  y_true_dist = []
+  for i in range(len(y_true)):
+    arr = []
+    for j in range(len(y_true)):
+      arr.append(mids[np.argmax(y_true[i][j])])
+    y_true_dist.append(arr)
+
+  L = 0
+  for i in y_true_dist:
+    L += 1
+
+  y_pred_dist = [] # i, j, dist
+  unique_i_j = []
+
+  for i in range(L):
+    for j in range(L):
+      if i <= j:
+        temp = [i, j]
+      else:
+        temp = [j, i]
+      if temp not in unique_i_j:
+        dist = distance_from_bins(y_pred[i][j], mids)
+        row = [i, j, dist]
+        y_pred_dist.append(row)
+        unique_i_j.append(temp) # this is done so that only one of (i,j) & (j, i) is included (the matrix is symmetric)
+
+  y_pred_dist = np.asarray(y_pred_dist)
+
+  # sort ascending order of dist
+  sorted_y_pred_dist = y_pred_dist[np.argsort(y_pred_dist[:, 2])]
+
+  # Remove that have less than five residues between them
+  del_rows = []
+  for i in range(len(sorted_y_pred_dist)):
+    if abs(sorted_y_pred_dist[i][0] - sorted_y_pred_dist[i][1]) < 6:
+      del_rows.append(i)
+
+  rem_sorted_pred_dist = []
+  for i in range(len(sorted_y_pred_dist)):
+    if i not in del_rows:
+      rem_sorted_pred_dist.append(sorted_y_pred_dist[i])
+
+  rem_sorted_pred_dist = np.asarray(rem_sorted_pred_dist)
+
+  # choose top L
+  num_choose = threshold_length * L 
+  chosen_y_pred = rem_sorted_pred_dist[0:num_choose,]
+
+  # check with ground truth
+  # give all y_pred 1
+  # for each i, j in y_pred, if y_true[i][j] < 8.0 then 1, else 0
+  y_pred = np.ones((num_choose,))
+  y_true = []
+
+  for i in range(len(chosen_y_pred)):
+    ind1 = int(chosen_y_pred[i][0])
+    ind2 = int(chosen_y_pred[i][1])
+    if y_true_dist[ind1][ind2] < thres:
+      y_true.append(1)
+    else:
+      y_true.append(0)
+
+  cm = confusion_matrix(y_true, y_pred)
+  precision = np.diag(cm) / np.sum(cm, axis = 0)
+  print(cm, precision)
+  try:
+    prec = precision[1]
+  except:
+    prec = 1.0
+
+  return prec
+
+model = load_model('models/model_unet_7_672.h5')
 key_lst = list(f_test['gdca'].keys())
 
-y_pred = []
-
 key = key_lst[0]
-
-X, y = get_datapoint(f_test, key, num_classes)
+foldername = key.replace('.hhE0', '')
+align_fname = 'testset/testing/benchmarkset/' + foldername + '/alignment.a3m'
+feature_dict, b, c = _generate_features(align_fname)
+# print(feature_dict)
+# X, y = get_datapoint(h5file, key, num_classes)
+X, y_true = get_datapoint_align(f_test, feature_dict, key, num_classes)
 y_pred = model.predict(X)
 
-y_pred = K.squeeze(y_pred, axis=0)
-
-# distance calculation
-y_true_dist = f_test["dist"][key][()]
-
-L = len(y_true_dist)
-y_pred_dist = [] # i, j, dist
-
-for i in range(L):
-  for j in range(L):
-    dist = distance_from_bins(y_pred[i][j], mids)
-    row = [i, j, dist]
-    y_pred_dist.append(row)
-
-y_pred_dist = np.asarray(y_pred_dist)
-
-# sort ascending order of dist
-sorted_y_pred_dist = y_pred_dist[np.argsort(y_pred_dist[:, 2])]
-
-# Remove that have less than five residues between them
-del_rows = []
-for i in range(len(sorted_y_pred_dist)):
-  if abs(sorted_y_pred_dist[i][0] - sorted_y_pred_dist[i][1]) < 6:
-    del_rows.append(i)
-
-rem_sorted_pred_dist = []
-for i in range(len(sorted_y_pred_dist)):
-  if i not in del_rows:
-    rem_sorted_pred_dist.append(sorted_y_pred_dist[i])
-
-rem_sorted_pred_dist = np.asarray(rem_sorted_pred_dist)
-
-# choose top L
-num_choose = threshold_length * L 
-chosen_y_pred = rem_sorted_pred_dist[0:num_choose,]
-
-# check with ground truth
-# give all y_pred 1
-# for each i, j in y_pred, if y_true[i][j] < 8.0 then 1, else 0
-y_pred = np.ones((num_choose,))
-y_true = []
-
-for i in range(len(chosen_y_pred)):
-  ind1 = int(chosen_y_pred[i][0])
-  ind2 = int(chosen_y_pred[i][1])
-  if y_true_dist[ind1][ind2] < thres:
-    y_true.append(1)
-  else:
-    y_true.append(0)
-
-cm = confusion_matrix(y_true, y_pred)
-precision = np.diag(cm) / np.sum(cm, axis = 0)
-print(cm, precision)
-try:
-  loss = cm[0][1]/(np.sum(cm))
-except:
-  loss = 0.0
-
-
-
-# prec = np.asarray(prec)
-print("PPV: ", prec)
+print(PPV_Metric(y_pred, y_true))
 
 # # y_pred = K.argmax(y_pred, axis=-1) 
 # y_pred = K.squeeze(y_pred, axis=0)

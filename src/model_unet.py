@@ -21,7 +21,7 @@ act = ELU
 init = "he_normal"
 reg_strength = float(10**-12)
 reg = l2(reg_strength)
-num_filters = 64
+num_filters = 32
 
 def self_outer(x):
     outer_x = x[ :, :, None, :] * x[ :, None, :, :]
@@ -29,15 +29,12 @@ def self_outer(x):
 
 def add_2D_conv(inp, filters, kernel_size, data_format="channels_last", padding="same", depthwise_initializer=init, pointwise_initializer=init, depthwise_regularizer=reg, 
         pointwise_regularizer=reg):
-	x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(inp)
-	x = Dropout(dropout)(x)
-	x = act()(x)
-	x = BatchNormalization()(x)
 
-	x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(inp)
-	x = Dropout(dropout)(x)
-	x = act()(x)
-	x = BatchNormalization()(x)
+	for j in range(1):
+		x = Conv2D(num_filters, kernel_size, data_format=data_format, padding=padding, kernel_initializer=depthwise_initializer, kernel_regularizer=depthwise_regularizer)(inp)
+		x = Dropout(dropout)(x)
+		x = act()(x)
+		x = BatchNormalization()(x)
 
 	return x
 
@@ -80,23 +77,25 @@ def unet(num_classes):
 	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*2, 3)
 	unet = add_2D_conv(unet, num_filters*2, 3)
+	unet = add_2D_conv(unet, num_filters*2, 3)
 
 	link2 = unet
 
 	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*4, 3)
 	unet = add_2D_conv(unet, num_filters*4, 3)
+	# unet = add_2D_conv(unet, num_filters*4, 3)
 
 	link3 = unet
 
 	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
 	unet = add_2D_conv(unet, num_filters*8, 3)
 	unet = add_2D_conv(unet, num_filters*8, 3)
+	# unet = add_2D_conv(unet, num_filters*8, 3)
 
 	link4 = unet
 
 	unet = MaxPooling2D(pool_size=(2, 2), data_format = "channels_last", padding='same')(unet)
-	unet = add_2D_conv(unet, num_filters*16, 3)
 	unet = add_2D_conv(unet, num_filters*16, 3)
 
 	#Upsampling
@@ -107,6 +106,7 @@ def unet(num_classes):
 
 	unet = add_2D_conv(unet, num_filters*8, 3)
 	unet = add_2D_conv(unet, num_filters*8, 3)
+	# unet = add_2D_conv(unet, num_filters*8, 3)
 
 	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters*4, 2)
@@ -115,6 +115,7 @@ def unet(num_classes):
 
 	unet = add_2D_conv(unet, num_filters*4, 3)
 	unet = add_2D_conv(unet, num_filters*4, 3)
+	# unet = add_2D_conv(unet, num_filters*4, 3)
 
 	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters*2, 2)
@@ -123,6 +124,7 @@ def unet(num_classes):
 
 	unet = add_2D_conv(unet, num_filters*2, 3)
 	unet = add_2D_conv(unet, num_filters*2, 3)
+	# unet = add_2D_conv(unet, num_filters*2, 3)
 
 	unet = UpSampling2D((2,2), data_format = "channels_last")(unet)
 	unet = add_2D_conv(unet, num_filters, 2)
@@ -131,8 +133,9 @@ def unet(num_classes):
 
 	unet = add_2D_conv(unet, num_filters, 3)
 	unet = add_2D_conv(unet, num_filters, 3)
+	# unet = add_2D_conv(unet, num_filters, 3)
 
-	output = Conv2D(num_classes, 7, activation ="softmax", data_format = "channels_last", 
+	output = Conv2D(num_classes, 2, activation ="linear", data_format = "channels_last", 
 	        padding = "same", kernel_initializer = init, kernel_regularizer = reg, name="out_dist")(unet)
 
 	model = Model(inputs = inp_2d + inputs_seq, outputs = output)

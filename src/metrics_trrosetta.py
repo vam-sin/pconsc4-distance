@@ -52,7 +52,7 @@ threshold_length = 1
 test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
 f_test = h5py.File(test_file_name, 'r')
 key_lst = list(f_test["gdca"].keys())
-pred_folder = '/home/vamsi/Internships/Stockholm/Repos/bioinfo-toolbox/trRosetta/predictions/'
+pred_folder = '/home/vamsi/Internships/PConsC4_Distance/Repos/bioinfo-toolbox/trRosetta/predictions/'
 
 # prob bins to dist
 def distance_from_bins(pred, mids):
@@ -150,7 +150,7 @@ In these top L check those that have a ground truth distance value less than 8 a
 Results: PPV
 
 37 classes 
-trRosetta PPV:  0.7781857073910398
+trRosetta PPV:  0.7781857073910398 (Thres: 8.0)
 trRosetta has four predictions: distance (d), omega, theta and phi.
 The distance range (2 to 20 Å) is binned into 36 equally spaced segments, 0.5 Å each, plus one bin indicating that residues are not in contact.
 First class is non contact and from the second one make the 36 demarcations from 2-20.

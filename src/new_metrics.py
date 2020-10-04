@@ -48,20 +48,35 @@ threshold_length = 1
 
 # define bins and pretrained models
 if num_classes == 7:
-    model_name = 'models/model_unet_7_672.h5'
-    bins = [4, 6, 8, 10, 12, 14]
-    mids = [2, 5, 7, 9, 11, 13, 15]
+    model_name = 'resnet_gpu.h5' 
+    bins = [4, 6, 8, 10, 12, 14] # 
+    # mids = [0, 5, 7, 9, 11, 13, 15, 2]
+    # mids = [0, 2, 5, 7, 9, 11, 13, 15]
+    '''Class meanings
+    0: None
+    1: 4-6
+    2: 6-8
+    3: 8-10
+    4: 10-12
+    5: 12-14
+    6: 14+
+    7: 0-4
+    '''
     # 0-4 is the first class
     weights = [2.00393768, 8.01948742, 6.77744028, 5.19939732, 3.37958688, 3.08356088, 0.18463084]
     weights = np.asarray(weights)
 elif num_classes == 12:
-    model_name = 'models/unet_2d_1d_12.h5'
+    model_name = 'models/unet.h5'
     bins = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     mids = [2.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5]
 elif num_classes == 26:
-    model_name = 'models/unet_2d_1d_26.h5'
+    model_name = 'resnet_gpu.h5'
     bins = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16]
     mids = [2, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25]
+elif num_classes == 37:
+    model_name = 'models/unet.h5'
+    bins = [2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20]
+    mids = [2.25, 2.75, 3.25, 3.75, 4.25, 4.75, 5.25, 5.75, 6.25, 6.75, 7.25, 7.75, 8.25, 8.75, 9.25, 9.75, 10.25, 10.75, 11.25, 11.75, 12.25, 12.75, 13.25, 13.75, 14.25, 14.75, 15.25, 15.75, 16.25, 16.75, 17.25, 17.75, 18.25, 18.75, 19.25, 19.75, 20.25]
 
 # test data
 test_file_name = "../Datasets/PconsC4-data/data/test_plm-gdca-phy-ss-rsa-eff-ali-mi_new.h5"
@@ -82,6 +97,32 @@ def generator_from_file(h5file, num_classes, batch_size=1):
       # print(feature_dict)
       # X, y = get_datapoint(h5file, key, num_classes)
       X, y = get_datapoint_align(h5file, feature_dict, key, num_classes)
+
+      batch_labels_dict = {}
+
+      batch_labels_dict["out_dist"] = y
+
+      i += 1
+
+      yield X, batch_labels_dict, key
+
+def generator_from_file2(h5file, num_classes, batch_size=1):
+  key_lst = list(h5file['gdca'].keys())
+  random.shuffle(key_lst)
+  i = 0
+
+  while True:
+      # TODO: different batch sizes with padding to max(L)
+      # for i in range(batch_size):
+      # index = random.randint(1, len(features)-1)
+      if i == len(key_lst):
+          random.shuffle(key_lst)
+          i = 0
+
+      key = key_lst[i]
+      # print(key)
+
+      X, y = get_datapoint(h5file, key, num_classes)
 
       batch_labels_dict = {}
 
@@ -133,14 +174,17 @@ def distance_from_bins(pred, mids):
 
 loss_fn = weighted_cce_3d(weights)
 model = load_model(model_name, custom_objects = {'cce_3d': loss_fn})
+# model = load_model(model_name)
 
 prec = []
 
 num_samples = 210
-with tf.device('/cpu:0'):
+with tf.device('/gpu:0'):
   for sample in tqdm(range(num_samples)):
     X, y_true, key = next(test_gen)
     y_pred = model.predict(X)
+    print(y_pred.shape)
+
     y_pred = np.squeeze(y_pred, axis=0)
 
     # distance calculation
@@ -157,7 +201,9 @@ with tf.device('/cpu:0'):
         else:
           temp = [j, i]
         if temp not in unique_i_j:
-          dist = distance_from_bins(y_pred[i][j], mids)
+          dist = np.dot(y_pred[i][j], mids) # distance_from_bins(y_pred[i][j], mids)
+          # print(y_pred[i][j], dist, y_true_dist[i][j])
+          # dist = mids[int(y_pred[i][j][0])]
           row = [i, j, dist]
           y_pred_dist.append(row)
           unique_i_j.append(temp) # this is done so that only one of (i,j) & (j, i) is included (the matrix is symmetric)
@@ -205,6 +251,7 @@ with tf.device('/cpu:0'):
       prec.append(precision[1])
     except:
       prec.append(1.0)
+    print(np.mean(prec))
 
   prec = np.asarray(prec)
   print("PPV: ", np.mean(prec))
@@ -220,4 +267,22 @@ Results: PPV
 
 7 classes 
 Vanilla CCE: PPV:  0.5591865122940344
+'''
+
+'''
+################## FCDenseNet103
+PPV:
+
+################## U-Net
+PPV:  0.5591865122940344 (Basic U-Net model, 4 connections)
+
+Notes:
+- Changing optimizer and learning rate did not improve the model.
+
+Possible options:
+- Add more layers and run on Arne's system. 
+
+################## ResNet (TrRosetta Recreation)
+PPV: 
+
 '''

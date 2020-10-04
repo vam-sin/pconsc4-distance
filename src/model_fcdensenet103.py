@@ -14,6 +14,7 @@ from keras.regularizers import l2
 
 # model definition function
 # param
+num_filters = 48
 
 def self_outer(x):
     outer_x = x[ :, :, None, :] * x[ :, None, :, :]
@@ -68,57 +69,57 @@ def fcdensenet103(num_classes):
 
 	bottleneck_seq = seq_feature_model(inputs_seq)
 	model_1D_outer = Lambda(self_outer)(bottleneck_seq)
-	model_1D_outer = BatchNormalization()(model_1D_outer)
+	model_1D_outer = BatchNormalization()(model_1D_outer) 
 
 	# Downsampling
 	inp = keras.layers.concatenate(inp_2d +  [model_1D_outer])
 	
-	x = Conv2D(filters = 48, kernel_size = 3, padding = 'same', kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), data_format='channels_last')(inp)
+	x = Conv2D(filters = num_filters, kernel_size = 3, padding = 'same', kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), data_format='channels_last')(inp)
 	
-	link1 = DenseBlock(x, 4, 48)
+	link1 = DenseBlock(x, 4, num_filters)
 	c1 = keras.layers.concatenate([link1, x])
-	x = TransitionDown(c1, 48)
+	x = TransitionDown(c1, num_filters)
 	
-	link2 = DenseBlock(x, 5, 48)
+	link2 = DenseBlock(x, 5, num_filters)
 	c2 = keras.layers.concatenate([link2, x])
-	x = TransitionDown(c2, 48)
+	x = TransitionDown(c2, num_filters)
 
-	link3 = DenseBlock(x, 7, 48)
+	link3 = DenseBlock(x, 7, num_filters)
 	c3 = keras.layers.concatenate([link3, x])
-	x = TransitionDown(c3, 48)
+	x = TransitionDown(c3, num_filters)
 
-	link4 = DenseBlock(x, 10, 48)
+	link4 = DenseBlock(x, 10, num_filters)
 	c4 = keras.layers.concatenate([link4, x])
-	x = TransitionDown(c4, 48)
+	x = TransitionDown(c4, num_filters)
 
-	# link5 = DenseBlock(x, 12, 48)
-	# c5 = keras.layers.concatenate([link5, x])
-	# x = TransitionDown(c5, 48)
+	link5 = DenseBlock(x, 12, 48)
+	c5 = keras.layers.concatenate([link5, x])
+	x = TransitionDown(c5, 48)
 
 	# # middle
-	x = DenseBlock(x, 15, 48)
+	x = DenseBlock(x, 15, num_filters)
 
 	# # Upsampling
-	# x = TransitionUp(x, 48)
-	# x = keras.layers.concatenate([c5, x])
-
-	x = DenseBlock(x, 12, 48)
-	x = TransitionUp(x, 48)
+	x = TransitionUp(x, num_filters)
 	x = keras.layers.concatenate([c4, x])
-	
-	x = DenseBlock(x, 10, 48)
-	x = TransitionUp(x, 48)
-	x = keras.layers.concatenate([c3, x])
 
-	x = DenseBlock(x, 7, 48)
-	x = TransitionUp(x, 48)
+	x = DenseBlock(x, 12, num_filters)
+	x = TransitionUp(x, num_filters)
+	x = keras.layers.concatenate([c3, x])
+	
+	x = DenseBlock(x, 10, num_filters)
+	x = TransitionUp(x, num_filters)
 	x = keras.layers.concatenate([c2, x])
+
+	x = DenseBlock(x, 7, num_filters)
+	x = TransitionUp(x, num_filters)
+	x = keras.layers.concatenate([c1, x])
 
 	x = DenseBlock(x, 5, 48)
 	x = TransitionUp(x, 48)
 	x = keras.layers.concatenate([c1, x])
 
-	x = DenseBlock(x, 4, 48)
+	x = DenseBlock(x, 4, num_filters)
 
 	output = Conv2D(num_classes, kernel_size = (1,1), padding = 'same', activation ="softmax", data_format = "channels_last", kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), name="out_dist")(x)
 

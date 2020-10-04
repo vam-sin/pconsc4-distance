@@ -38,12 +38,12 @@ def get_datapoint(h5file, key, num_classes, pad_even=True):
             x_i = h5file[feat][key][()]
             L = x_i.shape[0]
             x_i = x_i[..., None]
-            print(x_i.shape)
+            # print(x_i.shape)
         else:
             x_i = h5file[feat][key][()]
             L = x_i.shape[0]
         x_i = pad(x_i, pad_even)
-        print(x_i.shape)
+        # print(x_i.shape)
         x_i_dict[feat] = x_i[None, ...]
 
     seq = h5file["seq"][key][()]
@@ -72,9 +72,15 @@ def get_datapoint(h5file, key, num_classes, pad_even=True):
     elif num_classes == 26:
         bins = [4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16]
         no_bins = 26
+    elif num_classes == 37:
+        bins = [2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20]
+        no_bins = 37
 
     y = np.searchsorted(bins, y)
-    y = to_categorical(y, num_classes = no_bins)
+    y = y + 1
+    y = y.astype('int')
+    # y = np.squeeze(y, axis=3)
+    # y = to_categorical(y, num_classes = no_bins)
 
     return x_i_dict, y
 
@@ -123,10 +129,11 @@ def get_datapoint_align(h5file, feature_dict, key, num_classes, pad_even=True):
     y = h5file[label][key][()]
     y = y[..., None]  # reshape from (L,L) to (L,L,1)
     y = pad(y, pad_even)
-    y = y[None, ...]
+    # y = y[None, ...]
 
     if num_classes == 7:
         bins = [4, 6, 8, 10, 12, 14]
+        # [0, 4-6, 6-8, 8-10, 10-12, 12-14, 14+]
         no_bins = 7
     elif num_classes == 12:
         bins = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -136,7 +143,9 @@ def get_datapoint_align(h5file, feature_dict, key, num_classes, pad_even=True):
         no_bins = 26
 
     y = np.searchsorted(bins, y)
+    # print(y.shape)
     y = to_categorical(y, num_classes = no_bins)
+    # print(y.shape)
 
     return x_i_dict, y
 
@@ -147,6 +156,13 @@ if __name__ == '__main__':
     
     # num_classes = 7, 12, 26
     key_lst = list(f["gdca"].keys())
-    print(key_lst)
     X, y = get_datapoint(f, key_lst[0], 7)
-    print(y, f["dist"][key_lst[0]][()].shape)
+    y = np.asarray(y)
+    print(y.shape)
+    # print(y[0][0])
+    y_values = f["dist"][key_lst[0]][()]
+
+
+    # for i in range(len(y_values)):
+    #     for j in range(len(y_values)):
+    #         print(y[0][i][j], y_values[i][j])
