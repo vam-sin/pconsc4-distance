@@ -5,6 +5,17 @@ The input for the model is a multiple sequence alignment file and the output wou
 
 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="/src/images/MSA.png" width="250" height="250" title="Input MSA"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <img src="/src/images/2.png" width="250" height="250" title="Output Heatmap"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
 
+# Requirements
+
+```python3
+pip3 install gaussdca
+pip3 install tensorflow
+pip3 install keras
+pip3 install h5py
+```
+
+# Work Outline
+
 The multiple sequence alignments were generated using JackHMMer and the features that were extracted the MSA are:
 
 1. Gaussian Direct Coupling Analysis
