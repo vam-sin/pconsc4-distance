@@ -21,6 +21,15 @@ Using these 5 features, multiple fully convolutional neural network architecture
 4. VGG 19
 5. ResNet 50
 
+Multiple different loss functions were tested on the various models. The loss functions are:
+
+1. Focal Loss
+2. Dice Loss
+3. Categorical Cross Entropy
+4. Mean Squared Error
+5. Weighted CCE
+6. Tversky Loss
+
 # Predictions
 
 Follow the steps below to make your own prediction using the deeper U-Net model.
