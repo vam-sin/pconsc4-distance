@@ -5,6 +5,41 @@ The input for the model is a multiple sequence alignment file and the output wou
 
 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <img src="/src/images/MSA.png" width="250" height="250" title="Input MSA"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <img src="/src/images/2.png" width="250" height="250" title="Output Heatmap"> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
 
+# Requirements
+
+```python3
+pip3 install gaussdca
+pip3 install tensorflow
+pip3 install keras
+pip3 install h5py
+```
+
+# Work Outline
+
+The multiple sequence alignments were generated using JackHMMer and the features that were extracted the MSA are:
+
+1. Gaussian Direct Coupling Analysis
+2. APC-Corrected Mutual Information
+3. Normalized APC-Corrected Mutual Information
+4. Cross Entropy
+5. Sequence Features
+
+Using these 5 features, multiple fully convolutional neural network architectures were developed:
+
+1. FC-DenseNet 103
+2. U-Net
+3. Recreation of the trRosetta Model
+4. VGG 19
+5. ResNet 50
+
+Multiple different loss functions were tested on the various models. The loss functions are:
+
+1. Focal Loss
+2. Dice Loss
+3. Categorical Cross Entropy
+4. Mean Squared Error
+5. Weighted CCE
+6. Tversky Loss
 
 # Predictions
 
