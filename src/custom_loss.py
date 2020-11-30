@@ -1,6 +1,6 @@
 import numpy as np 
 import h5py 
-from preprocess_pcons import get_datapoint_align
+from preprocess_pcons import get_datapoint
 from alignment_process import _generate_features
 from keras.models import load_model 
 import keras.backend as K
@@ -162,19 +162,28 @@ def PPV_Metric(y_pred, y_true):
 
   return prec
 
-model = load_model('models/model_unet_7_672.h5')
+def mean_squared_error(y_true, y_pred):
+    return K.sum(K.mean(K.square(y_pred - y_true), axis=-1))
+
+# model = load_model('models/model_unet_7_559.h5')
 key_lst = list(f_test['gdca'].keys())
 
 key = key_lst[0]
-foldername = key.replace('.hhE0', '')
-align_fname = 'testset/testing/benchmarkset/' + foldername + '/alignment.a3m'
-feature_dict, b, c = _generate_features(align_fname)
+# foldername = key.replace('.hhE0', '')
+# align_fname = 'testset/testing/benchmarkset/' + foldername + '/alignment.a3m'
+# feature_dict, b, c = _generate_features(align_fname)
 # print(feature_dict)
-# X, y = get_datapoint(h5file, key, num_classes)
-X, y_true = get_datapoint_align(f_test, feature_dict, key, num_classes)
+X, y_true = get_datapoint(f_test, key, num_classes)
+# X, y_true = get_datapoint_align(f_test, feature_dict, key, num_classes)
 y_pred = model.predict(X)
+print(y_true.shape)
+# y_true = np.squeeze(y_true, axis=0)
+# y_true = np.squeeze(y_true, axis=2)
+# y_pred = y_true.copy()
+# y_pred[0][1] = 10.0
+print(y_pred.shape, y_true[0][1])
 
-print(PPV_Metric(y_pred, y_true))
+print(mean_squared_error(y_true, y_pred))
 
 # # y_pred = K.argmax(y_pred, axis=-1) 
 # y_pred = K.squeeze(y_pred, axis=0)

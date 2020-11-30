@@ -14,7 +14,7 @@ from keras.regularizers import l2
 
 # model definition function
 # param
-num_filters = 48
+num_filters = 16
 
 def self_outer(x):
     outer_x = x[ :, :, None, :] * x[ :, None, :, :]
@@ -49,32 +49,32 @@ def fcdensenet103(num_classes):
                  Input(shape=(None, None, 1), name="nmi_corr", dtype=K.floatx()), # nmi_corr
                  Input(shape=(None, None, 1), name="cross_h", dtype=K.floatx())] # cross_h
                  
-	inputs_seq = [Input(shape=(None, 22), dtype=K.floatx(), name="seq"), # sequence
-	              Input(shape=(None, 23), dtype=K.floatx(), name="self_info"), # self-information
-	              Input(shape=(None, 23), dtype=K.floatx(), name="part_entr")] # partial entropy
+	# inputs_seq = [Input(shape=(None, 22), dtype=K.floatx(), name="seq"), # sequence
+	#               Input(shape=(None, 23), dtype=K.floatx(), name="self_info"), # self-information
+	#               Input(shape=(None, 23), dtype=K.floatx(), name="part_entr")] # partial entropy
 
-	ss_model = load_model('1d.h5')
-	ss_model.trainable = False
+	# ss_model = load_model('1d.h5')
+	# ss_model.trainable = False
 
-	seq_feature_model = ss_model._layers_by_depth[5][0]
-	#plot_model(seq_feature_model, "seq_feature_model.png")
+	# seq_feature_model = ss_model._layers_by_depth[5][0]
+	# #plot_model(seq_feature_model, "seq_feature_model.png")
 
-	assert 'model' in seq_feature_model.name, seq_feature_model.name
-	seq_feature_model.name = 'sequence_features'
-	seq_feature_model.trainable = False
-	for l in ss_model.layers:
-	    l.trainable = False
-	for l in seq_feature_model.layers:
-	    l.trainable = False
+	# assert 'model' in seq_feature_model.name, seq_feature_model.name
+	# seq_feature_model.name = 'sequence_features'
+	# seq_feature_model.trainable = False
+	# for l in ss_model.layers:
+	#     l.trainable = False
+	# for l in seq_feature_model.layers:
+	#     l.trainable = False
 
-	bottleneck_seq = seq_feature_model(inputs_seq)
-	model_1D_outer = Lambda(self_outer)(bottleneck_seq)
-	model_1D_outer = BatchNormalization()(model_1D_outer) 
+	# bottleneck_seq = seq_feature_model(inputs_seq)
+	seq = [Input(shape = (None, 128), dtype=K.floatx(), name = "seq_input")]
+	model_1D_outer = Lambda(self_outer)(seq[0])
+	model_1D_outer = BatchNormalization()(model_1D_outer)
 
-	# Downsampling
-	inp = keras.layers.concatenate(inp_2d +  [model_1D_outer])
+	x = keras.layers.concatenate(inp_2d +  [model_1D_outer])
 	
-	x = Conv2D(filters = num_filters, kernel_size = 3, padding = 'same', kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), data_format='channels_last')(inp)
+	x = Conv2D(filters = num_filters, kernel_size = 3, padding = 'same', kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), data_format='channels_last')(x)
 	
 	link1 = DenseBlock(x, 4, num_filters)
 	c1 = keras.layers.concatenate([link1, x])
@@ -92,28 +92,28 @@ def fcdensenet103(num_classes):
 	c4 = keras.layers.concatenate([link4, x])
 	x = TransitionDown(c4, num_filters)
 
-	link5 = DenseBlock(x, 12, 48)
-	c5 = keras.layers.concatenate([link5, x])
-	x = TransitionDown(c5, 48)
+	# link5 = DenseBlock(x, 12, 48)
+	# c5 = keras.layers.concatenate([link5, x])
+	# x = TransitionDown(c5, 48)
 
 	# # middle
 	x = DenseBlock(x, 15, num_filters)
 
 	# # Upsampling
-	x = TransitionUp(x, num_filters)
-	x = keras.layers.concatenate([c4, x])
+	# x = TransitionUp(x, num_filters)
+	# x = keras.layers.concatenate([c5, x])
 
 	x = DenseBlock(x, 12, num_filters)
 	x = TransitionUp(x, num_filters)
-	x = keras.layers.concatenate([c3, x])
+	x = keras.layers.concatenate([c4, x])
 	
 	x = DenseBlock(x, 10, num_filters)
 	x = TransitionUp(x, num_filters)
-	x = keras.layers.concatenate([c2, x])
+	x = keras.layers.concatenate([c3, x])
 
 	x = DenseBlock(x, 7, num_filters)
 	x = TransitionUp(x, num_filters)
-	x = keras.layers.concatenate([c1, x])
+	x = keras.layers.concatenate([c2, x])
 
 	x = DenseBlock(x, 5, 48)
 	x = TransitionUp(x, 48)
@@ -123,7 +123,7 @@ def fcdensenet103(num_classes):
 
 	output = Conv2D(num_classes, kernel_size = (1,1), padding = 'same', activation ="softmax", data_format = "channels_last", kernel_initializer = 'he_uniform', kernel_regularizer = l2(0.0001), name="out_dist")(x)
 
-	model = Model(inputs = inp_2d + inputs_seq, outputs = output)
+	model = Model(inputs = inp_2d + seq, outputs = output)
 	print(model.summary())
 
 	return model 

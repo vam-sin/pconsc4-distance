@@ -85,7 +85,7 @@ threshold_length = int(sys.argv[3])
 range_mode = (sys.argv[4])
 
 if n_bins == 7:
-    model_name = 'models/model_unet_7_672.h5'
+    model_name = 'models/res_1.h5'
     bins = [2, 5, 7, 9, 11, 13, 15]
     prob_len = 3
 

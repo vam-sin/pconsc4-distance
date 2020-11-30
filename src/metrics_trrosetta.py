@@ -29,6 +29,7 @@ if gpus:
 import h5py
 from preprocess_pcons import get_datapoint_align, get_datapoint
 from alignment_process import _generate_features
+from keras.utils import to_categorical 
 from keras.models import load_model 
 from keras import backend as K
 from sklearn.metrics import classification_report, confusion_matrix
@@ -63,19 +64,106 @@ def distance_from_bins(pred, mids):
 
   return dist
 
+def percent_mismatches(y_true, y_pred):
+  # print(y_pred.shape, y_true.shape)
+  # y_pred = np.squeeze(y_pred, axis=0)
+  # print(y_pred.shape)
+  y_pred = np.reshape(y_pred, (y_pred.shape[0]*y_pred.shape[0], num_classes))
+  y_pred = np.argmax(y_pred, axis=1)
+  # print(y_true.shape)
+  # y_true = np.squeeze(y_true, axis=0)
+  y_true = np.reshape(y_true, (y_true.shape[0]*y_true.shape[0]))
+  # y_true = np.argmax(y_true, axis=1)
+  # print(y_true.shape, y_pred.shape)
+  cm = confusion_matrix(y_true, y_pred)
+  import seaborn as sns
+  import matplotlib.pyplot as plt
+
+  sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', annot_kws={"fontsize":10})
+  plt.show()
+  return confusion_matrix(y_true, y_pred), classification_report(y_true, y_pred)
+
+from keras.utils import to_categorical 
+
+def WCCE(y_true, y_pred):
+  weights = [1,1,1,1,0.1,0.1,0.1]
+  bins = [4, 6, 8, 10, 12, 14] # 
+  # mids = [0, 5, 7, 9, 11, 13, 15, 2]
+  mids = [2, 5, 7, 9, 11, 13, 15]
+  y_true = np.searchsorted(bins, y_true)
+  y_pred = np.searchsorted(bins, y_pred)
+  y_pred = to_categorical(y_pred, num_classes = 7)
+  y_true = to_categorical(y_true, num_classes = 7)
+  # print(y_true.shape, y_pred.shape)
+  epsilon = 1e-5
+  Lsq = y_pred.shape[0]*y_pred.shape[0]
+  # y_pred = np.squeeze(y_pred, axis=0)
+  # print(y_pred.shape)
+  y_pred = np.reshape(y_pred, (y_pred.shape[0]*y_pred.shape[0], 7))
+  # print(y_true.shape)
+  # y_true = np.squeeze(y_true, axis=0)
+  # y_true = np.expand_dims(y_true, axis=0)
+  # print(y_pred.shape, y_true.shape)
+  # print(np.min(y_true))
+  y_true = np.reshape(y_true, (y_true.shape[1]*y_true.shape[1], 7))
+
+  y_pred /= np.sum(y_pred, axis=-1, keepdims=True) # clip to prevent NaN's and Inf's
+  y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+  loss = y_true * np.log(y_pred) * weights
+  loss = -np.sum(loss, -1)
+  loss = np.sum(loss, axis=0)
+
+  loss /= Lsq
+    
+  return loss
+
 prec = []
+
+def mean_squared_error(y_true, y_pred):
+    # y_true = np.squeeze(y_true, axis=0)
+    # y_true = np.squeeze(y_true, axis=2)
+    # y_pred = np.squeeze(y_pred, axis=0)
+    # y_pred = np.squeeze(y_pred, axis=2)
+    # print(y_pred - y_true)
+    print(np.sum(np.abs(y_pred - y_true)))
+    return np.sqrt(np.mean(np.square(y_pred - y_true)))
 
 num_samples = 210
 with tf.device('/cpu:0'):
-  for sample in tqdm(range(num_samples)): # sample = 15, 34 trial
+  for sample in tqdm(range(1)): # sample = 15, 34 trial
     pred_file = pred_folder + key_lst[sample].replace('.hhE0', '') + '.npz'
     data = np.load(pred_file)
     y_pred = data["dist"]
 
     # distance calculation
     y_true_dist = f_test["dist"][key_lst[sample]][()]
-
+    y_true_dist[y_true_dist > 20.0] = 20.25
+    # print(y_pred.shape, y_true_dist.shape, len(bins))
+    y_pred_ = np.zeros((y_true_dist.shape))
+    for i in range(y_true_dist.shape[0]):
+      for j in range(y_true_dist.shape[1]):
+        y_pred_[i][j] = distance_from_bins(y_pred[i][j], mids)
+    # print("Error: ", mean_squared_error(y_true_dist, y_pred_))
     L = len(y_true_dist)
+
+    y_true_class = np.searchsorted(bins, y_true_dist)
+    cm, cr = percent_mismatches(y_true_class, y_pred)
+    for i in cm:
+      print(i)
+    print(cr)
+    print("WCCE", WCCE(y_true_dist, y_pred_))
+    # print(y_true_class)
+    y_pred_ = np.zeros((y_true_dist.shape))
+    for i in range(y_true_dist.shape[0]):
+      for j in range(y_true_dist.shape[1]):
+        y_pred_[i][j] = np.argmax(y_pred[i][j])
+    y_pred_ += 1
+    y_pred_[y_pred_ == 37] = 0
+    # print(y_pred_) 
+
+    # for i in range(L):
+    #   for j in range(L):
+    #     print(y_true_dist[i][j], y_pred_[i][j])
 
     # print(np.mean(abs_val))
     y_pred_dist = [] # i, j, dist
